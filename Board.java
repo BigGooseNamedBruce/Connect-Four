@@ -13,6 +13,7 @@ public class Board {
     // Initilizses the constant variables for the board width and height
     public final int BOARD_LENGTH = 6;
     public final int BOARD_WIDTH = 7;
+    public int moves;
 
     // Initialies instance variable and the board
     private int spacesLeft = BOARD_LENGTH * BOARD_WIDTH - 2;
@@ -24,6 +25,7 @@ public class Board {
      */
     public Board() {
         clear();
+        moves = 0;
     }
 
     /**
@@ -36,6 +38,8 @@ public class Board {
         for (int row = 0; row < BOARD_LENGTH; row++) {
             this.board[row] = Arrays.copyOf(board.getBoard()[row], board.getBoard()[row].length);
         }
+        this.spacesLeft = board.getSpacesLeft();
+        this.moves = board.moves;
     }
 
     /**
@@ -101,6 +105,7 @@ public class Board {
             if (board[row][col] == ' ' && !(board[row][col] == 'X' || board[row][col] == 'O')) {
                 board[row][col] = player;
                 spacesLeft--;
+                moves++;
                 return true;
             }
         }
@@ -114,6 +119,7 @@ public class Board {
             if (board[row][col] == player) {
                 board[row][col] = ' ';
                 spacesLeft++;
+                moves--;
                 return true;
             }
         }
