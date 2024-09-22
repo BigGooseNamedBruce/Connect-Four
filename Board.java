@@ -221,13 +221,4 @@ public class Board {
 
         return boardString;
     }
-
-    public char getOpponent(char player) {
-        if (player == 'X') {
-            return 'O';
-        } else {
-            return 'X';
-        }
-    }
-
 }
