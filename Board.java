@@ -11,13 +11,13 @@ import java.util.Arrays;
 public class Board {
 
     // Initilizses the constant variables for the board width and height
-    public final int BOARD_LENGTH = 6;
+    public final int BOARD_HEIGHT = 6;
     public final int BOARD_WIDTH = 7;
     public int moves;
 
     // Initialies instance variable and the board
-    private int spacesLeft = BOARD_LENGTH * BOARD_WIDTH - 2;
-    private char[][] board = new char[BOARD_LENGTH][BOARD_WIDTH];
+    private int spacesLeft = BOARD_HEIGHT * BOARD_WIDTH - 2;
+    private char[][] board = new char[BOARD_HEIGHT][BOARD_WIDTH];
 
     /**
      * No-argument constructor to initialize an empty board
@@ -35,7 +35,7 @@ public class Board {
      * @param board A Board object that the constuctor will use to copy the position onto a new board
      */
     public Board(Board board) {
-        for (int row = 0; row < BOARD_LENGTH; row++) {
+        for (int row = 0; row < BOARD_HEIGHT; row++) {
             this.board[row] = Arrays.copyOf(board.getBoard()[row], board.getBoard()[row].length);
         }
         this.spacesLeft = board.getSpacesLeft();
@@ -49,7 +49,7 @@ public class Board {
      */
     public void clear() {
         // Resets the amount of spaces left on the board
-        this.spacesLeft = BOARD_LENGTH * BOARD_WIDTH;
+        this.spacesLeft = BOARD_HEIGHT * BOARD_WIDTH;
 
         // Loops through the entire 2D array to clear all pieces
         for (char[] row: board) {
@@ -101,7 +101,7 @@ public class Board {
      */
     public boolean placeDisc(int col, char player) {
         // Loops from the bottom row up and places the piece at that column
-        for (int row = BOARD_LENGTH - 1; row >= 0; row--) {
+        for (int row = BOARD_HEIGHT - 1; row >= 0; row--) {
             if (board[row][col] == ' ' && !(board[row][col] == 'X' || board[row][col] == 'O')) {
                 board[row][col] = player;
                 spacesLeft--;
@@ -115,7 +115,7 @@ public class Board {
 
     public boolean removeDisc(int col, char player) {
         // Loops from the top row down and places the piece at that column
-        for (int row = 0; row < BOARD_LENGTH; row++) {
+        for (int row = 0; row < BOARD_HEIGHT; row++) {
             if (board[row][col] == player) {
                 board[row][col] = ' ';
                 spacesLeft++;
@@ -128,7 +128,7 @@ public class Board {
     }
 
     public boolean isColumnFull(int col) {
-        for (int row = 0; row < BOARD_LENGTH; row++) {
+        for (int row = 0; row < BOARD_HEIGHT; row++) {
             if (board[row][col] == ' ') {
                 return false;
             }
@@ -156,7 +156,7 @@ public class Board {
         }
 
         // Checks vertically if there is a conenct 4
-        for (int row = BOARD_LENGTH - 1; row > 2; row--) {
+        for (int row = BOARD_HEIGHT - 1; row > 2; row--) {
             for (int col = 0; col < BOARD_WIDTH; col++) {
                 if (board[row][col] == player && board[row-1][col] == player && board[row-2][col] == player && board[row-3][col] == player) {
                     return true;
@@ -165,7 +165,7 @@ public class Board {
         }
 
         // Checks diagonally upwards to the right if there is a connect 4
-        for (int row = BOARD_LENGTH - 1; row > 3; row--) {
+        for (int row = BOARD_HEIGHT - 1; row > 3; row--) {
             for (int col = 0; col < BOARD_WIDTH - 3; col++) {
                 if (board[row][col] == player && board[row-1][col+1] == player && board[row-2][col+2] == player && board[row-3][col+3] == player) {
                     return true;
@@ -174,7 +174,7 @@ public class Board {
         }
 
         // Checks diagonally downwards to the right if there is a connect 4
-        for (int row = 0; row < BOARD_LENGTH - 3; row++) {
+        for (int row = 0; row < BOARD_HEIGHT - 3; row++) {
             for (int col = 0; col < BOARD_WIDTH - 3; col++) {
                 if (board[row][col] == player && board[row+1][col+1] == player && board[row+2][col+2] == player && board[row+3][col+3] == player) {
                     return true;
