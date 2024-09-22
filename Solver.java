@@ -19,9 +19,8 @@ public class Solver {
         int bestMove = -1;
         int score;
         int bestScore = Integer.MIN_VALUE;
-        int alpha = Integer.MIN_VALUE;
+        int alpha = Integer.MIN_VALUE + 1;
         int beta = Integer.MAX_VALUE;
-        //int[] explorationOrder = {3, 2, 4, 1, 5, 0, 6};
        
         for (int col = 0; col < board.BOARD_WIDTH; col++) {
             if (!board.isColumnFull(col)) {
@@ -31,11 +30,12 @@ public class Solver {
                 if (board.checkDraw()) {
                     score = 0;
                 } else if (board.checkWinner(player)) {
-                    score = (board.getSpacesLeft() + 1) / 2;
+                    score = (board.getSpacesLeft() + 2) / 2;
                 } else {
-                    score = -negamax(getOpponent(player));
+                    score = -negamax(getOpponent(player), alpha, beta);
                 }
                 
+                //System.out.println(score + " " + (col + 1));
                 board.removeDisc(col, player);
 
                 if (score > bestScore) {
@@ -49,7 +49,7 @@ public class Solver {
     }
 
 
-    public int negamax(char player) {
+    private int negamax(char player, int alpha, int beta) {
         // Checks if the position is drawn
         if (board.checkDraw()) {
             return 0;
@@ -67,18 +67,31 @@ public class Solver {
             }
         }
 
-        int bestScore = -board.BOARD_HEIGHT * board.BOARD_WIDTH;
+        int max = (board.getSpacesLeft() - 1) / 2;
+        if (beta > max) {
+            beta = max;
+            if (alpha >= beta) {
+                return beta;
+            }
+        }
+       
 
         for (int col = 0; col < board.BOARD_WIDTH; col++) {
             if (!board.isColumnFull(col)) {
                 board.placeDisc(col, player);
-                int score = -negamax(getOpponent(player));
+                int score = -negamax(getOpponent(player), -beta, -alpha);
                 board.removeDisc(col, player);
-                bestScore = Math.max(bestScore, score);
+                
+                if (score >= beta) {
+                    return score;
+                }
+                if (score > alpha) {
+                    alpha = score;
+                }
             }
         }
 
-        return bestScore;
+        return alpha;
     }
 
     public char getOpponent(char player) {
