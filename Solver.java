@@ -33,7 +33,7 @@ public class Solver {
                 } else if (board.checkWinner(player)) {
                     score = (board.getSpacesLeft() + 1) / 2;
                 } else {
-                    score = -negamax(board, getOpponent(player));
+                    score = -negamax(getOpponent(player));
                 }
                 
                 board.removeDisc(col, player);
@@ -49,7 +49,7 @@ public class Solver {
     }
 
 
-    public int negamax(Board board, char player) {
+    public int negamax(char player) {
         // Checks if the position is drawn
         if (board.checkDraw()) {
             return 0;
@@ -71,9 +71,9 @@ public class Solver {
 
         for (int col = 0; col < board.BOARD_WIDTH; col++) {
             if (!board.isColumnFull(col)) {
-                Board board2 = new Board(board);
-                board2.placeDisc(col, player);
-                int score = -negamax(board2, getOpponent(player));
+                board.placeDisc(col, player);
+                int score = -negamax(getOpponent(player));
+                board.removeDisc(col, player);
                 bestScore = Math.max(bestScore, score);
             }
         }
