@@ -160,7 +160,7 @@ public class Board {
         }
 
         // Checks diagonally upwards to the right if there is a connect 4
-        for (int row = BOARD_HEIGHT - 1; row > 3; row--) {
+        for (int row = BOARD_HEIGHT - 1; row > 2; row--) {
             for (int col = 0; col < BOARD_WIDTH - 3; col++) {
                 if (board[row][col] == player && board[row-1][col+1] == player && board[row-2][col+2] == player && board[row-3][col+3] == player) {
                     return true;
