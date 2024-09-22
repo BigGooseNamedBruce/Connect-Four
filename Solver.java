@@ -29,7 +29,7 @@ public class Solver {
                 board.placeDisc(col, player);
                 
                 if (board.checkDraw()) {
-                    return 0;
+                    score = 0;
                 } else if (board.checkWinner(player)) {
                     score = (board.getSpacesLeft() + 1) / 2;
                 } else {
@@ -88,6 +88,4 @@ public class Solver {
             return 'X';
         }
     }
-
-
 }
