@@ -17,6 +17,7 @@ public class Solver {
     public int findBestMove(char player) {
 
         int bestMove = -1;
+        int score;
         int bestScore = Integer.MIN_VALUE;
         int alpha = Integer.MIN_VALUE;
         int beta = Integer.MAX_VALUE;
@@ -26,8 +27,17 @@ public class Solver {
             if (!board.isColumnFull(col)) {
                 
                 board.placeDisc(col, player);
-                int score = -negamax(board, getOpponent(player));
+                
+                if (board.checkDraw()) {
+                    return 0;
+                } else if (board.checkWinner(player)) {
+                    score = (board.getSpacesLeft() + 1) / 2;
+                } else {
+                    score = -negamax(board, getOpponent(player));
+                }
+                
                 board.removeDisc(col, player);
+
                 if (score > bestScore) {
                     bestMove = col;
                     bestScore = score;
@@ -39,28 +49,25 @@ public class Solver {
     }
 
 
-
     public int negamax(Board board, char player) {
         // Checks if the position is drawn
-        if (board.moves == board.BOARD_LENGTH * board.BOARD_WIDTH) {
+        if (board.checkDraw()) {
             return 0;
         }
 
         for (int col = 0; col < board.BOARD_WIDTH; col++) {
-
             if (!board.isColumnFull(col)) {
                 board.placeDisc(col, player);
                 if (board.checkWinner(player)) {
                     board.removeDisc(col, player);
-                    return (board.BOARD_LENGTH * board.BOARD_WIDTH + 1 - board.moves) / 2;
-                } else {
-                    board.removeDisc(col, player);
+                    return (board.getSpacesLeft() + 1) / 2;
                 }
+                board.removeDisc(col, player);
                 
             }
         }
 
-        int bestScore = -board.BOARD_LENGTH * board.BOARD_WIDTH;
+        int bestScore = -board.BOARD_HEIGHT * board.BOARD_WIDTH;
 
         for (int col = 0; col < board.BOARD_WIDTH; col++) {
             if (!board.isColumnFull(col)) {
@@ -68,13 +75,11 @@ public class Solver {
                 board2.placeDisc(col, player);
                 int score = -negamax(board2, getOpponent(player));
                 bestScore = Math.max(bestScore, score);
-
             }
         }
 
         return bestScore;
     }
-
 
     public char getOpponent(char player) {
         if (player == 'X') {
