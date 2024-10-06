@@ -6,14 +6,12 @@ public class BitBoard {
     private long playerBoard;
     private long mask;
     private long opponentBoard;
-    private int moves = 0;
     private int spacesLeft;
 
     public BitBoard() {
         playerBoard = 0;
         opponentBoard = 0;
         mask = 0;
-        moves = 0;
         spacesLeft = BOARD_HEIGHT * BOARD_WIDTH;
     }
 
@@ -30,10 +28,16 @@ public class BitBoard {
      * @param col
      * @param player 1 represents the player and 0 represents the opponent
      */
-    public void placeDisc(int col) {
+    public void placeDisc(int col, int player) {
 
-        opponentBoard ^= mask;
         mask |= mask + bottomMask(col);
+
+        if (player == 1) {
+            playerBoard = mask ^ opponentBoard;
+        } else {
+            opponentBoard = mask ^ playerBoard;
+        }
+
         spacesLeft--;
         
     }
@@ -42,16 +46,53 @@ public class BitBoard {
         return 1L << (col * (BOARD_HEIGHT + 1));
     }
 
-    public boolean checkWinner() {
-        return true;
+    public boolean checkWinner(int player) {
+
+        // Gets the board to check the winner for
+        long board;
+        if (player == 1) {
+            board = playerBoard;
+        } else {
+            board = opponentBoard;
+        }
+
+        // Checks for horizontal win
+        long horizontalAlignment = board & (board >> (BOARD_HEIGHT + 1));
+        if ((horizontalAlignment & (horizontalAlignment >> (2 * (BOARD_HEIGHT + 1)))) != 0) {
+            return true;
+        }
+
+        // Checks for vertical win
+        long verticalAlignment = board & (board >> 1);
+        if ((verticalAlignment & (verticalAlignment >> 2)) != 0) {
+            return true;
+        }
+
+         // Checks diagonally upwards and to the right if there is a connect 4
+         long upwardsRightAlignment = board & (board >> (BOARD_HEIGHT + 2));
+         if ((upwardsRightAlignment & (upwardsRightAlignment >> (2 * (BOARD_HEIGHT + 2)))) != 0) {
+             return true;
+         }
+
+        // Checks diagonally downwards and to the right if there is a connect 4
+        long downwardsRightAlignment = board & (board >> BOARD_HEIGHT);
+        if ((downwardsRightAlignment & (downwardsRightAlignment >> (2 * BOARD_HEIGHT))) != 0) {
+            return true;
+        }
+
+        return false;
     }
 
     public long getplayerBoard() {
-        return mask ^ playerBoard;
+        return playerBoard;
     }
 
     public long getopponentBoard() {
-        return mask & opponentBoard;
+        return opponentBoard;
+    }
+
+    public int getSpacesLeft() {
+        return spacesLeft;
     }
 
     @Override
@@ -100,7 +141,7 @@ public class BitBoard {
                 } else {
                     s += "   |";
                 }
-                System.out.print(p.charAt(i + BOARD_WIDTH * j) + " " + (i + BOARD_WIDTH * j) + "     ");
+                System.out.print(stringBoard.charAt(i + BOARD_WIDTH * j) + " " + (i + BOARD_WIDTH * j) + "     ");
             }
             s += "\n-----------------------------\n";
             System.out.println();
