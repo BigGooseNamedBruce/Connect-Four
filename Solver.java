@@ -1,9 +1,9 @@
 public class Solver {
 
-    private Board board;
+    private BitBoard board;
     public int[] b = new int[7];
 
-    public Solver(Board board) {
+    public Solver(BitBoard board) {
         this.board = board;
     }
 
@@ -14,7 +14,7 @@ public class Solver {
      * @param player An char representing which player
      * @return
      */
-    public int findBestMove(char player) {
+    public int findBestMove(int player) {
 
         int bestMove = -1;
         int score;
@@ -32,7 +32,7 @@ public class Solver {
                 } else if (board.checkWinner(player)) {
                     score = (board.getSpacesLeft() + 2) / 2;
                 } else {
-                    score = -negamax(getOpponent(player), alpha, beta);
+                    score = -negamax(board, getOpponent(player), alpha, beta);
                 }
                 
                 //System.out.println(score + " " + (col + 1));
@@ -49,7 +49,7 @@ public class Solver {
     }
 
 
-    private int negamax(char player, int alpha, int beta) {
+    public int negamax(BitBoard board, int player, int alpha, int beta) {
         // Checks if the position is drawn
         if (board.checkDraw()) {
             return 0;
@@ -57,13 +57,11 @@ public class Solver {
 
         for (int col = 0; col < board.BOARD_WIDTH; col++) {
             if (!board.isColumnFull(col)) {
-                board.placeDisc(col, player);
-                if (board.checkWinner(player)) {
-                    board.removeDisc(col, player);
-                    return (board.getSpacesLeft() + 1) / 2;
-                }
-                board.removeDisc(col, player);
-                
+                BitBoard board2 = new BitBoard(board);
+                board2.placeDisc(col, player);
+                if (board2.checkWinner(player)) {
+                    return (board2.getSpacesLeft() + 2) / 2;
+                } 
             }
         }
 
@@ -78,9 +76,10 @@ public class Solver {
 
         for (int col = 0; col < board.BOARD_WIDTH; col++) {
             if (!board.isColumnFull(col)) {
-                board.placeDisc(col, player);
-                int score = -negamax(getOpponent(player), -beta, -alpha);
-                board.removeDisc(col, player);
+                BitBoard board2 = new BitBoard(board);
+                board2.placeDisc(col, player);
+                
+                int score = -negamax(board2, getOpponent(player), -beta, -alpha);
                 
                 if (score >= beta) {
                     return score;
@@ -94,11 +93,7 @@ public class Solver {
         return alpha;
     }
 
-    public char getOpponent(char player) {
-        if (player == 'X') {
-            return 'O';
-        } else {
-            return 'X';
-        }
+    public int getOpponent(int player) {
+        return player ^ 1;
     }
 }
