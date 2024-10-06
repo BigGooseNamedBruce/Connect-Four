@@ -4,11 +4,23 @@ public class BitBoard {
     public final int BOARD_WIDTH = 7;
 
     private long playerBoard;
-    private long mask;
     private long opponentBoard;
+    private long mask;
     private int spacesLeft;
 
     public BitBoard() {
+        clear();
+    }
+
+    public BitBoard(BitBoard bitBoard) {
+        this.playerBoard = bitBoard.playerBoard;
+        this.opponentBoard = bitBoard.opponentBoard;
+        this.mask = bitBoard.mask;
+        this.spacesLeft = bitBoard.spacesLeft;
+
+    }
+
+    public void clear() {
         playerBoard = 0;
         opponentBoard = 0;
         mask = 0;
@@ -39,6 +51,24 @@ public class BitBoard {
         }
 
         spacesLeft--;
+    }
+
+    public void removeDisc(int col, int player) {
+
+        long mbs = bottomMask(col);
+        while ((mask & mbs) != 0) {
+            mbs = mbs << 1;
+        }
+
+        mask = mask & ~(mbs >> 1);
+
+        if (player == 1) {
+            playerBoard = mask ^ opponentBoard;
+        } else {
+            opponentBoard = mask ^ playerBoard;
+        }
+
+        spacesLeft++;
         
     }
 
@@ -80,6 +110,13 @@ public class BitBoard {
             return true;
         }
 
+        return false;
+    }
+
+    public boolean checkDraw() {
+        if (spacesLeft == 0) {
+            return true;
+        }
         return false;
     }
 
