@@ -1,10 +1,11 @@
 public class Solver {
 
     private BitBoard board;
-    public int[] b = new int[7];
+    private TranspositionTable table;
 
     public Solver(BitBoard board) {
         this.board = board;
+        this.table = new TranspositionTable(16777215);
     }
 
 
@@ -21,8 +22,10 @@ public class Solver {
         int bestScore = Integer.MIN_VALUE;
         int alpha = Integer.MIN_VALUE + 1;
         int beta = Integer.MAX_VALUE;
+        int[] moveOrder = {3, 4, 2, 5, 1, 6, 0};
        
-        for (int col = 0; col < board.BOARD_WIDTH; col++) {
+        //for (int col = 0; col < board.BOARD_WIDTH; col++) {
+        for (int col: moveOrder) {
             if (!board.isColumnFull(col)) {
                 
                 board.placeDisc(col, player);
@@ -66,6 +69,11 @@ public class Solver {
         }
 
         int max = (board.getSpacesLeft() - 1) / 2;
+
+        if (table.get(board.key()) != 0) {
+            max = table.get(board.key()) + board.MIN_SCORE - 1;
+        }
+
         if (beta > max) {
             beta = max;
             if (alpha >= beta) {
@@ -89,7 +97,8 @@ public class Solver {
                 }
             }
         }
-
+        //transTable.put(P.key(), alpha - Position::MIN_SCORE + 1)
+        table.put(board.key(), (byte) (alpha - board.MIN_SCORE + 1));
         return alpha;
     }
 

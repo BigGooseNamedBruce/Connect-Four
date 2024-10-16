@@ -2,6 +2,9 @@ public class BitBoard {
     
     public final int BOARD_HEIGHT = 6;
     public final int BOARD_WIDTH = 7;
+    public final int MIN_SCORE = -(BOARD_WIDTH * BOARD_HEIGHT) / 2 + 3;
+    public final int MAX_SCORE = (BOARD_WIDTH * BOARD_HEIGHT + 1) / 2 - 3;
+
 
     private long playerBoard;
     private long opponentBoard;
@@ -130,6 +133,17 @@ public class BitBoard {
 
     public int getSpacesLeft() {
         return spacesLeft;
+    }
+
+    public long key() {
+
+        long bottom = 0;
+
+        for (int i = 0; i < BOARD_WIDTH; i++) {
+            bottom += bottomMask(i);
+        }
+
+        return playerBoard + bottom + mask;
     }
 
     @Override
