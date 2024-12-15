@@ -1,10 +1,11 @@
+import java.util.Arrays;
+
 public class BitBoard {
     
     public final int BOARD_HEIGHT = 6;
     public final int BOARD_WIDTH = 7;
     public final int MIN_SCORE = -(BOARD_WIDTH * BOARD_HEIGHT) / 2 + 3;
     public final int MAX_SCORE = (BOARD_WIDTH * BOARD_HEIGHT + 1) / 2 - 3;
-
 
     private long playerBoard;
     private long opponentBoard;
@@ -56,21 +57,30 @@ public class BitBoard {
         spacesLeft--;
     }
 
-    public void removeDisc(int col, int player) {
+    /**
+     * Removes the top piece of the column
+     * 
+     * @param col The int representing the column of the piece that will be removed
+     */
+    public void removeDisc(int col) {
 
-        long mbs = bottomMask(col);
-        while ((mask & mbs) != 0) {
-            mbs = mbs << 1;
-        }
+        // Gets the binary representation of the piece that is going to be removed
+        long removedPiece = ((1L << BOARD_HEIGHT) - 1) << (col * (BOARD_HEIGHT + 1));
+        removedPiece &= mask;
+        removedPiece = ~(removedPiece) & ((removedPiece << 1) ^ removedPiece);
+        removedPiece = removedPiece >> 1;
 
-        mask = mask & ~(mbs >> 1);
+        // Removes the piece from the mask
+        mask = mask ^ removedPiece;
 
-        if (player == 1) {
+        // Removes the piece from the player or opponent board
+        if ((removedPiece & playerBoard) != 0) {
             playerBoard = mask ^ opponentBoard;
         } else {
             opponentBoard = mask ^ playerBoard;
         }
 
+        // Adds a space to the total amount of spots left since a piece has been removed 
         spacesLeft++;
         
     }
@@ -117,10 +127,7 @@ public class BitBoard {
     }
 
     public boolean checkDraw() {
-        if (spacesLeft == 0) {
-            return true;
-        }
-        return false;
+        return spacesLeft == 0;
     }
 
     public long getplayerBoard() {
@@ -148,61 +155,31 @@ public class BitBoard {
 
     @Override
     public String toString() {
-        String stringBoard = Long.toBinaryString(mask);
-        playerBoard = mask ^ opponentBoard;
-        String p = Long.toBinaryString(playerBoard);
-        String o = Long.toBinaryString(opponentBoard);
-        //System.out.println(Long.toBinaryString(playerBoard));
-        //System.out.println(Long.toBinaryString(opponentBoard));
-        //System.out.println(stringBoard);
-       //7415320.47444/*String a = "0".repeat((spacesLeft + BOARD_WIDTH) - 1) + stringBoard;
-        //System.out.println(a + " " + a.length());
-
-        //for (int i = 0; i < BOARD_HEIGHT * BOARD_WIDTH; i += 8) {
-            //System.out.println(i + " " + (i + 7));
-            //System.out.println(a.substring(i, i + 7));
-        //}
         
-        //for (int i = 0; i < BOARD_HEIGHT * BOARD_WIDTH - 7 - 1; i += 7) {
-            //System.out.println(i);
-            //System.out.println(stringBoard.substring(i, i + 7));
-        //}
+        // Initializes a string of the binary representations of the player and opponent board
+        String playerBoardString = String.format("%49s", Long.toBinaryString(playerBoard)).replace(" ", "0");
+        String opponentBoardString = String.format("%49s", Long.toBinaryString(opponentBoard)).replace(" ", "0");
 
-        // char[][] board = new char[BOARD_HEIGHT][BOARD_WIDTH];
-        
+        String boardString = "-----------------------------\n";
 
-        stringBoard = String.format("%49s", stringBoard).replace(" ", "0");
-        p = String.format("%49s", p).replace(" ", "0");
-        o = String.format("%49s", o).replace(" ", "0");
-        //p = String.format("%49s", p).replace(" ", "0").replace("1", "X");
-        //o = String.format("%49s", o).replace(" ", "0").replace("1", "O");
-        System.out.println(stringBoard);
-        System.out.println(p);
-        System.out.println(o);
-
-        String s = "-----------------------------\n";
-        for (int i = 0; i < BOARD_WIDTH; i++) {
-            String row = "";
-            s += "|";
-            for (int j = BOARD_HEIGHT; j > -1; j--) {
-                if (p.charAt(i + BOARD_WIDTH * j) == '1') {
-                    s += " X |";
-                } else if (o.charAt(i + BOARD_WIDTH * j) == '1') {
-                    s += " O |";
+        // Iterates vertically over the board
+        for (int row = 1; row < BOARD_HEIGHT + 1; row++) {
+            boardString += "|";
+            // Iterates horizontally
+            for (int col = BOARD_WIDTH - 1; col > -1; col--) {
+                if (playerBoardString.charAt(row + BOARD_WIDTH * col) == '1') {
+                    boardString += " X |";
+                } else if (opponentBoardString.charAt(row + BOARD_WIDTH * col) == '1') {
+                    boardString += " O |";
                 } else {
-                    s += "   |";
+                    boardString += "   |";
                 }
-                System.out.print(stringBoard.charAt(i + BOARD_WIDTH * j) + " " + (i + BOARD_WIDTH * j) + "     ");
             }
-            s += "\n-----------------------------\n";
-            System.out.println();
-            //System.out.println(row);
-            //for (int col = 0; col < row.length(); i++) {
-                //System.out.print(row.charAt(i));
-            //}
+
+            boardString += "\n-----------------------------\n";
         }
 
-        return s;
+        return boardString;
     }
 
 }
