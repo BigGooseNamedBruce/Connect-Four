@@ -1,11 +1,12 @@
 public class Solver {
 
     private BitBoard board;
+    private final int TRANSPOSITION_TABLE_SIZE = (int) Math.pow(2, 23);
     private TranspositionTable table;
 
     public Solver(BitBoard board) {
         this.board = board;
-        this.table = new TranspositionTable(16777215);
+        this.table = new TranspositionTable(TRANSPOSITION_TABLE_SIZE);
     }
 
 
@@ -20,8 +21,6 @@ public class Solver {
         int bestMove = -1;
         int score;
         int bestScore = Integer.MIN_VALUE;
-        int alpha = Integer.MIN_VALUE + 1;
-        int beta = Integer.MAX_VALUE;
         int[] moveOrder = {3, 4, 2, 5, 1, 6, 0};
        
         //for (int col = 0; col < board.BOARD_WIDTH; col++) {
@@ -35,11 +34,10 @@ public class Solver {
                 } else if (board.checkWinner(player)) {
                     score = (board.getSpacesLeft() + 2) / 2;
                 } else {
-                    score = -negamax(board, getOpponent(player), alpha, beta);
+                    score = -solve(getOpponent(player));
                 }
                 
-                //System.out.println(score + " " + (col + 1));
-                board.removeDisc(col, player);
+                board.removeDisc(col);
 
                 if (score > bestScore) {
                     bestMove = col;
@@ -49,10 +47,33 @@ public class Solver {
         }
 
         return bestMove;
+
+    }
+
+    public int solve(int player) {
+        int min = -board.getSpacesLeft() / 2;
+        int max = (board.getSpacesLeft() + 1) / 2;
+
+        while (min < max) {
+            int med = min + (max - min) / 2;
+            if (med <= 0 && min / 2 < med) {
+                med = min / 2;
+            } else if (med >= 0 && max / 2 > med) {
+                med = max / 2;
+            }
+            int r = negamax(board, player, med, med + 1);
+            if (r <= med) {
+                max = r;
+            } else {
+                min = r;
+            }
+        }
+        return min;
+
     }
 
 
-    public int negamax(BitBoard board, int player, int alpha, int beta) {
+    private int negamax(BitBoard board, int player, int alpha, int beta) {
         // Checks if the position is drawn
         if (board.checkDraw()) {
             return 0;
@@ -97,9 +118,16 @@ public class Solver {
                 }
             }
         }
-        //transTable.put(P.key(), alpha - Position::MIN_SCORE + 1)
+
         table.put(board.key(), (byte) (alpha - board.MIN_SCORE + 1));
         return alpha;
+    }
+
+    public void loadPosition(String position, int player) {
+        for (int i = 0; i < position.length(); i++) {
+            board.placeDisc(Character.getNumericValue(position.charAt(i) - 1), player);
+            player = getOpponent(player);
+        }
     }
 
     public int getOpponent(int player) {
