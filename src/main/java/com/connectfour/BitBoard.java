@@ -1,4 +1,4 @@
-package src.main.java.com.connectfour;
+package com.connectfour;
 
 public class BitBoard {
     

@@ -1,6 +1,6 @@
 import java.util.Arrays;
 import java.util.Scanner;
-import src.main.java.com.connectfour.*;
+import com.connectfour.*;
 
 public class Test {
     public static void main(String args[]) throws InterruptedException {

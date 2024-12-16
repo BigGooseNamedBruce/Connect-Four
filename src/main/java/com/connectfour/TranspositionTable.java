@@ -1,4 +1,4 @@
-package src.main.java.com.connectfour;
+package com.connectfour;
 
 import java.util.Arrays;
 

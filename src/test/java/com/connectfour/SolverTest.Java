@@ -3,7 +3,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.Arrays;
 import java.time.Instant;
-import src.main.java.com.connectfour.*;
+import com.connectfour.*;
 
 
 public class SolverTest {
