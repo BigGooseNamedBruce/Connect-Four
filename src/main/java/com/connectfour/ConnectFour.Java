@@ -1,6 +1,8 @@
+package src.main.java.com.connectfour;
+
 import java.util.Scanner;
 
-public class Play {
+public class ConnectFour {
     public static void main(String[] args){
 
         BitBoard board = new BitBoard();
@@ -40,6 +42,8 @@ public class Play {
         } else {
             System.out.println("Draw");
         }
+
+        input.close();
 
     }
 }

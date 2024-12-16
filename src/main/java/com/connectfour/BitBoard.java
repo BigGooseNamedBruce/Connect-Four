@@ -1,4 +1,4 @@
-import java.util.Arrays;
+package src.main.java.com.connectfour;
 
 public class BitBoard {
     

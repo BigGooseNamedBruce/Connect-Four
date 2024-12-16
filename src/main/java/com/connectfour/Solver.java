@@ -1,3 +1,5 @@
+package src.main.java.com.connectfour;
+
 public class Solver {
 
     private BitBoard board;

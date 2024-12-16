@@ -1,3 +1,5 @@
+package src.main.java.com.connectfour;
+
 import java.util.Arrays;
 
 public class TranspositionTable {
