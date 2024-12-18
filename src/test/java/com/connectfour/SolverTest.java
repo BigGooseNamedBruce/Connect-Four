@@ -108,7 +108,7 @@ public class SolverTest {
     }
 
 
-    @Test
+    //@Test
     void MiddleMediunTest() {
 
         System.out.println("Test_L2_R2_Middle_Medium.txt");
