@@ -1,8 +1,10 @@
+package com.connectfour;
+
 import java.util.Arrays;
 import java.util.Scanner;
 import com.connectfour.*;
 
-public class Test {
+public class ConnectFourTest {
     public static void main(String args[]) throws InterruptedException {
         //Board board = new Board();
         
