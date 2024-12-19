@@ -5,6 +5,7 @@ public class Solver {
     private BitBoard board;
     private final int TRANSPOSITION_TABLE_SIZE = (int) Math.pow(2, 23);
     private TranspositionTable table;
+    private int[] moveOrder = {3, 4, 2, 5, 1, 6, 0};
 
     public Solver(BitBoard board) {
         this.board = board;
@@ -23,7 +24,7 @@ public class Solver {
         int bestMove = -1;
         int score;
         int bestScore = Integer.MIN_VALUE;
-        int[] moveOrder = {3, 4, 2, 5, 1, 6, 0};
+        
        
         //for (int col = 0; col < board.BOARD_WIDTH; col++) {
         for (int col: moveOrder) {
@@ -82,46 +83,70 @@ public class Solver {
         }
 
         for (int col = 0; col < board.BOARD_WIDTH; col++) {
-            if (!board.isColumnFull(col)) {
-                BitBoard board2 = new BitBoard(board);
-                board2.placeDisc(col, player);
-                if (board2.checkWinner(player)) {
-                    return (board2.getSpacesLeft() + 2) / 2;
-                } 
+            if (!board.isColumnFull(col) & board.canWinNext(col, player)) {
+                return (board.getSpacesLeft() + 1) / 2;
+            }
+        }
+
+        int min = -board.getSpacesLeft() / 2;
+        if (alpha < min) {
+            alpha = min;
+            if(alpha >= beta) {
+                return alpha;  
             }
         }
 
         int max = (board.getSpacesLeft() - 1) / 2;
-
-        if (table.get(board.key()) != 0) {
-            max = table.get(board.key()) + board.MIN_SCORE - 1;
-        }
-
         if (beta > max) {
             beta = max;
             if (alpha >= beta) {
                 return beta;
             }
         }
-       
 
-        for (int col = 0; col < board.BOARD_WIDTH; col++) {
+
+        long key = board.key();
+        int value = table.get(key);
+        if (value != 0) {
+            if (value > board.MAX_SCORE - board.MIN_SCORE + 1) {
+                min = value + 2 * board.MIN_SCORE - board.MAX_SCORE - 2;
+                if (alpha < min) {
+                    alpha = min;
+                    if (alpha >= beta) {
+                        return alpha;
+                    }
+                }
+            } else {
+              max = value + board.MIN_SCORE - 1;
+              if (beta > max) {
+                beta = max;
+                if (alpha >= beta) {
+                    return beta;
+                }
+              }  
+            }
+        }
+
+        for (int i = 0; i < moveOrder.length; i++) {
+            int col = moveOrder[i];
             if (!board.isColumnFull(col)) {
                 BitBoard board2 = new BitBoard(board);
                 board2.placeDisc(col, player);
                 
                 int score = -negamax(board2, getOpponent(player), -beta, -alpha);
                 
-                if (score >= beta) {
+                if(score >= beta) {
+                    table.put(key, (byte) (score + board.MAX_SCORE - 2 * board.MIN_SCORE + 2));
                     return score;
                 }
+
                 if (score > alpha) {
                     alpha = score;
                 }
             }
         }
 
-        table.put(board.key(), (byte) (alpha - board.MIN_SCORE + 1));
+        table.put(key, (byte) (alpha - board.MIN_SCORE + 1));
         return alpha;
     }
 

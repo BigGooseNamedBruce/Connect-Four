@@ -65,8 +65,7 @@ public class BitBoard {
     public void removeDisc(int col) {
 
         // Gets the binary representation of the piece that is going to be removed
-        long removedPiece = ((1L << BOARD_HEIGHT) - 1) << (col * (BOARD_HEIGHT + 1));
-        removedPiece &= mask;
+        long removedPiece = columnMask(col) & mask;
         removedPiece = ~(removedPiece) & ((removedPiece << 1) ^ removedPiece);
         removedPiece = removedPiece >> 1;
 
@@ -89,15 +88,18 @@ public class BitBoard {
         return 1L << (col * (BOARD_HEIGHT + 1));
     }
 
+
     public boolean checkWinner(int player) {
 
         // Gets the board to check the winner for
-        long board;
         if (player == 1) {
-            board = playerBoard;
+            return checkWinner(playerBoard);
         } else {
-            board = opponentBoard;
+            return checkWinner(opponentBoard);
         }
+    }
+
+    private boolean checkWinner(long board) {
 
         // Checks for horizontal win
         long horizontalAlignment = board & (board >> (BOARD_HEIGHT + 1));
@@ -126,6 +128,26 @@ public class BitBoard {
         return false;
     }
 
+    public boolean canWinNext(int col, int player) {
+        long board;
+        if (player == 1) {
+            board = playerBoard;
+        } else {
+            board = opponentBoard;
+        }
+        //System.out.println(String.format("%49s", Long.toBinaryString(board)).replace(" ", "0"));
+        //System.out.println(String.format("%49s", Long.toBinaryString(mask)).replace(" ", "0"));
+        //System.out.println(String.format("%49s", Long.toBinaryString(mask + bottomMask(col))).replace(" ", "0"));
+        //System.out.println(String.format("%49s", Long.toBinaryString((mask + bottomMask(col)) & columnMask(col))).replace(" ", "0"));
+        board |= (mask + bottomMask(col)) & columnMask(col);
+        //System.out.println(String.format("%49s", Long.toBinaryString(board)).replace(" ", "0"));
+        return checkWinner(board);
+    }
+
+    public long columnMask(int col) {
+        return ((1L << BOARD_HEIGHT) - 1) << (col * (BOARD_HEIGHT + 1));
+    }
+ 
     public boolean checkDraw() {
         return spacesLeft == 0;
     }
