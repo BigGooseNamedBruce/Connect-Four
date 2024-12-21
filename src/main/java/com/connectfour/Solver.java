@@ -48,12 +48,15 @@ public class Solver {
                 }
             }
         }
-
         return bestMove;
 
     }
 
     public int solve(int player) {
+        if (board.canWinNext(player)) {
+            return (board.getSpacesLeft() + 1) / 2;
+        }
+
         int min = -board.getSpacesLeft() / 2;
         int max = (board.getSpacesLeft() + 1) / 2;
 
@@ -71,6 +74,7 @@ public class Solver {
                 min = r;
             }
         }
+
         return min;
 
     }
@@ -83,10 +87,15 @@ public class Solver {
         }
 
         for (int col = 0; col < board.BOARD_WIDTH; col++) {
-            if (!board.isColumnFull(col) & board.canWinNext(col, player)) {
+            if (!board.isColumnFull(col) & board.canWinNext(player)) {
                 return (board.getSpacesLeft() + 1) / 2;
             }
         }
+
+        if(board.possibleNonLosingMoves(player) == 0) {
+            return -(board.getSpacesLeft()) / 2;
+        }   
+            
 
         int min = -board.getSpacesLeft() / 2;
         if (alpha < min) {
@@ -135,7 +144,7 @@ public class Solver {
                 
                 int score = -negamax(board2, getOpponent(player), -beta, -alpha);
                 
-                if(score >= beta) {
+                if (score >= beta) {
                     table.put(key, (byte) (score + board.MAX_SCORE - 2 * board.MIN_SCORE + 2));
                     return score;
                 }

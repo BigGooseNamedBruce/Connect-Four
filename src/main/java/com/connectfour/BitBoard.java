@@ -6,6 +6,8 @@ public class BitBoard {
     public final int BOARD_WIDTH = 7;
     public final int MIN_SCORE = -(BOARD_WIDTH * BOARD_HEIGHT) / 2 + 3;
     public final int MAX_SCORE = (BOARD_WIDTH * BOARD_HEIGHT + 1) / 2 - 3;
+    public final long bottomMask = bottomMask();
+    public final long boardMask = bottomMask * ((1L << BOARD_HEIGHT) - 1);
 
     private long playerBoard;
     private long opponentBoard;
@@ -46,7 +48,7 @@ public class BitBoard {
      */
     public void placeDisc(int col, int player) {
 
-        mask |= mask + bottomMask(col);
+        mask |= mask + bottomMaskColumn(col);
 
         if (player == 1) {
             playerBoard = mask ^ opponentBoard;
@@ -84,7 +86,7 @@ public class BitBoard {
         
     }
 
-    private long bottomMask(int col) {
+    private long bottomMaskColumn(int col) {
         return 1L << (col * (BOARD_HEIGHT + 1));
     }
 
@@ -128,20 +130,97 @@ public class BitBoard {
         return false;
     }
 
-    public boolean canWinNext(int col, int player) {
+    public boolean isWinningMove(int col, int player) {
         long board;
         if (player == 1) {
             board = playerBoard;
         } else {
             board = opponentBoard;
         }
-        //System.out.println(String.format("%49s", Long.toBinaryString(board)).replace(" ", "0"));
-        //System.out.println(String.format("%49s", Long.toBinaryString(mask)).replace(" ", "0"));
-        //System.out.println(String.format("%49s", Long.toBinaryString(mask + bottomMask(col))).replace(" ", "0"));
-        //System.out.println(String.format("%49s", Long.toBinaryString((mask + bottomMask(col)) & columnMask(col))).replace(" ", "0"));
-        board |= (mask + bottomMask(col)) & columnMask(col);
-        //System.out.println(String.format("%49s", Long.toBinaryString(board)).replace(" ", "0"));
+
+        board |= (mask + bottomMaskColumn(col)) & columnMask(col);
+
         return checkWinner(board);
+    }
+
+    public boolean canWinNext(int player) {
+        return (winning_position(player) & possible()) != 0;
+    }
+
+    public long possibleNonLosingMoves(int player) {
+
+        long possibleMask = possible();
+        long opponentWin = winning_position(player ^ 1);
+        long forcedMoves = possibleMask & opponentWin;
+        if (forcedMoves != 0) {
+            if ((forcedMoves & (forcedMoves - 1)) != 0) {
+                return 0;
+            } else {
+                possibleMask = forcedMoves;
+            }
+        }
+
+        return possibleMask & ~(opponentWin >> 1);
+    }
+
+    public long winning_position(int player) {
+
+        if (player == 1) {
+            return compute_winning_position(playerBoard);
+        } else {
+            return compute_winning_position(opponentBoard);
+        }
+    } 
+
+    /**
+     * Gets a bitmap of all the possible playable moves 
+     * 
+     * @return A bitmap of all the possible playable moves 
+     */
+    public long possible() {
+        return (mask + bottomMask) & boardMask;
+    }
+
+    /**
+     * Gets a bitmap of all the possible connect fours
+     * 
+     * @param board A board of either the player of the opponent
+     * @return A bitmap containing all the possible connect fours
+     */
+    public long compute_winning_position(long board) {
+
+        // Checks if a vertically move can lead to a win
+        long r = (board << 1) & (board << 2) & (board << 3);
+
+
+        // Checks if a horizontally move can lead to a win
+        long p = (board << (BOARD_HEIGHT + 1)) & (board << 2 * (BOARD_HEIGHT + 1));
+
+        r |= p & (board << 3 * (BOARD_HEIGHT + 1));
+        r |= p & (board >> (BOARD_HEIGHT + 1));
+        p >>= 3*(BOARD_HEIGHT + 1);
+        r |= p & (board << (BOARD_HEIGHT + 1));
+        r |= p & (board >> 3 * (BOARD_HEIGHT + 1));
+
+        // Checks if a diagonally upwards and to the right move can lead to win
+        p = (board << (BOARD_HEIGHT+2)) & (board << 2*(BOARD_HEIGHT+2));
+        r |= p & (board << 3*(BOARD_HEIGHT+2));
+        r |= p & (board >> (BOARD_HEIGHT+2));
+        p >>= 3*(BOARD_HEIGHT+2);
+        r |= p & (board << (BOARD_HEIGHT+2));
+        r |= p & (board >> 3*(BOARD_HEIGHT+2));
+
+        // Checks if a diagonally downwards and to the right move can lead to win
+        p = (board << BOARD_HEIGHT) & (board << 2*BOARD_HEIGHT);
+        r |= p & (board << 3*BOARD_HEIGHT);
+        r |= p & (board >> BOARD_HEIGHT);
+        p >>= 3*BOARD_HEIGHT;
+        r |= p & (board << BOARD_HEIGHT);
+        r |= p & (board >> 3*BOARD_HEIGHT);
+
+        
+        return r & (boardMask ^ mask);
+
     }
 
     public long columnMask(int col) {
@@ -169,10 +248,18 @@ public class BitBoard {
         long bottom = 0;
 
         for (int i = 0; i < BOARD_WIDTH; i++) {
-            bottom += bottomMask(i);
+            bottom += bottomMaskColumn(i);
         }
 
         return playerBoard + bottom + mask;
+    }
+
+    public long bottomMask() {
+        long boardMask = 0;
+        for (int i = 0; i < BOARD_WIDTH; i++) {
+            boardMask += 1L << (BOARD_HEIGHT + 1) * i;
+        }
+        return boardMask;
     }
 
     @Override
