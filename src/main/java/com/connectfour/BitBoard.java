@@ -2,8 +2,8 @@ package com.connectfour;
 
 public class BitBoard {
     
-    public final int BOARD_HEIGHT = 6;
-    public final int BOARD_WIDTH = 7;
+    public static final int BOARD_HEIGHT = 6;
+    public static final int BOARD_WIDTH = 7;
     public final int MIN_SCORE = -(BOARD_WIDTH * BOARD_HEIGHT) / 2 + 3;
     public final int MAX_SCORE = (BOARD_WIDTH * BOARD_HEIGHT + 1) / 2 - 3;
     public final long bottomMask = bottomMask();
@@ -221,6 +221,36 @@ public class BitBoard {
         
         return r & (boardMask ^ mask);
 
+    }
+
+    public int moveScore(long move, int player) {
+        if (player == 1) {
+            return popcount(compute_winning_position(playerBoard | move));
+        } else {
+            return popcount(compute_winning_position(opponentBoard | move));
+        }
+    }
+
+    public int popcount(long bits) {
+        int count;
+        for (count = 0; bits != 0; count++) {
+            bits &= bits - 1;
+        }
+
+        return count;
+    }
+
+    public void play(long move, int player) {
+
+        mask |= move;
+
+        if (player == 1) {
+            playerBoard = mask ^ opponentBoard;
+        } else {
+            opponentBoard = mask ^ playerBoard;
+        }
+
+        spacesLeft--;
     }
 
     public long columnMask(int col) {

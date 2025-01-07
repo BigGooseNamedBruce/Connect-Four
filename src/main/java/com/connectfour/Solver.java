@@ -1,5 +1,7 @@
 package com.connectfour;
 
+import javax.swing.text.Position;
+
 public class Solver {
 
     private BitBoard board;
@@ -92,7 +94,8 @@ public class Solver {
             }
         }
 
-        if(board.possibleNonLosingMoves(player) == 0) {
+        long possible = board.possibleNonLosingMoves(player);
+        if(possible == 0) {
             return -(board.getSpacesLeft()) / 2;
         }   
             
@@ -136,22 +139,30 @@ public class Solver {
             }
         }
 
-        for (int i = 0; i < moveOrder.length; i++) {
-            int col = moveOrder[i];
-            if (!board.isColumnFull(col)) {
-                BitBoard board2 = new BitBoard(board);
-                board2.placeDisc(col, player);
-                
-                int score = -negamax(board2, getOpponent(player), -beta, -alpha);
-                
-                if (score >= beta) {
-                    table.put(key, (byte) (score + board.MAX_SCORE - 2 * board.MIN_SCORE + 2));
-                    return score;
-                }
+        MoveSorter moves = new MoveSorter();
+        for (int i = BitBoard.BOARD_WIDTH - 1; i >= 0; i--) {
+            long move = possible & board.columnMask(moveOrder[i]);
+            if (move != 0) {
+                moves.add(move, board.moveScore(move, player));
+            }
+        } 
 
-                if (score > alpha) {
-                    alpha = score;
-                }
+        long next = moves.getNext();
+
+        while(next != 0) {
+            BitBoard board2 = new BitBoard(board);
+            board2.play(next, player);
+            next = moves.getNext();
+            
+            int score = -negamax(board2, getOpponent(player), -beta, -alpha);
+            
+            if (score >= beta) {
+                table.put(key, (byte) (score + board.MAX_SCORE - 2 * board.MIN_SCORE + 2));
+                return score;
+            }
+
+            if (score > alpha) {
+                alpha = score;
             }
         }
 
