@@ -116,7 +116,6 @@ public class Solver {
             }
         }
 
-
         long key = board.key();
         int value = table.get(key);
         if (value != 0) {

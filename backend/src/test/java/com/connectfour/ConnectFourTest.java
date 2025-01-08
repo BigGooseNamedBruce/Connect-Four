@@ -9,6 +9,31 @@ public class ConnectFourTest {
         //Board board = new Board();
         
         BitBoard board = new BitBoard();
+        
+
+        Solver solver = new Solver(board);
+        System.out.println(board);
+        int player = 1;
+        //board.placeDisc(3, 'X');
+        //65323776614155213553376652122427
+        String s = "3464123621337153667644637227";
+        //String s = "";
+        for (int i = 0; i < s.length(); i++) {
+            //System.out.println(s.charAt(i));
+            board.placeDisc(Character.getNumericValue(s.charAt(i) - 1), player);
+            player = solver.getOpponent(player);
+        }
+        
+
+ 
+
+        System.out.println(board);
+        solver.solve(1);
+
+        //Temp.printb(board.compute_winning_position(board.possibleNonLosingMoves(0)));
+
+        
+        
         // System.out.println(b);
         // b.placeDisc(6);
         // b.placeDisc(6);
@@ -37,21 +62,13 @@ public class ConnectFourTest {
 
         //System.out.println(b.checkWinner(1));
 
-        Solver solver = new Solver(board);
-        System.out.println(board);
-        int player = 1;
-        //board.placeDisc(3, 'X');
-        //65323776614155213553376652122427
-        String s = "3464123621337153667644637227";
-        //String s = "";
-        for (int i = 0; i < s.length(); i++) {
-            //System.out.println(s.charAt(i));
-            board.placeDisc(Character.getNumericValue(s.charAt(i) - 1), player);
-            player = solver.getOpponent(player);
-        }
-
-        System.out.println(board + " " + player);
-        System.out.println(solver.solve(player));
+        //System.out.println(board + " " + player);
+        //System.out.println(solver.solve(player));
+        //board.placeDisc(4, 1);
+        //board.placeDisc(4, 1);
+        //System.out.println(board);
+        //System.out.println(board.canWinNext(0));
+        //System.out.println(board.checkWinner(1));
         //board.removeDisc(2, player);
         //board.removeDisc(2, player);
         //board.removeDisc(2, player);

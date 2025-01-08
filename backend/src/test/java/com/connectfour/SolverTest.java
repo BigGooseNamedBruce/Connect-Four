@@ -15,7 +15,7 @@ public class SolverTest {
 
     BitBoard board;
     Solver solver;
-    int count;
+    static int count = 0;
     int player;
 
 
@@ -148,10 +148,56 @@ public class SolverTest {
         }
     }
 
-    /* static int count = 0;
+    @Test
+    void BeginEasyTest() {
+
+        System.out.println("Test_L1_R3_Begin_Easy.txt");
+
+        File file = new File("src/test/resources/Test_L1_R3_Begin_Easy.txt");
+
+        try {
+            Scanner scanner = new Scanner(file);
+
+            while (scanner.hasNextLine()) {
+                count++;
+                String line = scanner.nextLine();
+                String[] parts = line.split(" ");
+                String moveOrder = parts[0];
+                int score = Integer.parseInt(parts[1]);
+
+                for (int i = 0; i < moveOrder.length(); i++) {
+                    board.placeDisc(Character.getNumericValue(moveOrder.charAt(i) - 1), player);
+                    player = solver.getOpponent(player);
+                }
+
+                int testScore = solver.solve(player);
+
+                if (testScore == score) {
+                    System.out.println("True " + count);
+                } else {
+                    System.out.println("False: " + testScore + " != " + score + " " + count);
+                }
+                
+                assertEquals(score, testScore, "dasdad");
+
+                board.clear();
+
+            }
+        } catch (FileNotFoundException fileNotFoundException) {
+            System.out.printf("Test_L3_R1_End_Easy.txt not found");
+        }
+    }
+
+    @Test
+    void popcountTest() {
+        BitBoard b = new BitBoard();
+        assertEquals(b.popcount(5L), 2);
+    }
+
+
     public static void main(String[] args) {
         long start = System.nanoTime(); 
-        testNegamax("Test_L2_R1_Middle_Easy.txt");
+        testNegamax("src/test/resources/Test_L1_R2_Begin_Medium.txt");
         long end = System.nanoTime();
         System.out.println("time: " + ((end - start) / 1000000.0) + "ms");
         System.out.println("time: " + ((end - start) / 1000000.0 / count) + "ms/position");
@@ -159,7 +205,7 @@ public class SolverTest {
     }
 
     public static void testNegamax(String filename) {
-        File file = new File(String.format("UnitTests/%s", filename));
+        File file = new File(filename);
         BitBoard board = new BitBoard();
         Solver solver = new Solver(board);
         //char player = 'X';
@@ -202,7 +248,7 @@ public class SolverTest {
         
         
 
-    } */
+    }
 
     
 
