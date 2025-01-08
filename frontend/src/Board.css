@@ -1,0 +1,38 @@
+body {
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    background-color: #2d2d30;
+  }
+.board {
+    display: grid;
+    grid-template-columns: repeat(7, 10vh);
+    grid-template-rows: repeat(6, 10vh);
+    gap: 3vh;
+    border: 5px solid #1d1c1c;
+    background-color: #008CBA;
+    padding: 2vh;
+}
+.cell {
+    width: 10vh;
+    height: 10vh;
+    border-radius: 50%;
+    background-color: #f1f1f1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+.cell.clicked {
+    pointer-events: none;
+}
+.red {
+    background-color: red;
+}
+.yellow {
+    background-color: yellow;
+}
