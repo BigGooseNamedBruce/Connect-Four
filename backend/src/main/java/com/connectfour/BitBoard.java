@@ -1,5 +1,7 @@
 package com.connectfour;
 
+import java.util.Arrays;
+
 public class BitBoard {
     
     public static final int BOARD_HEIGHT = 6;
@@ -290,6 +292,36 @@ public class BitBoard {
             boardMask += 1L << (BOARD_HEIGHT + 1) * i;
         }
         return boardMask;
+    }
+
+    public String[][] toArray() {
+
+
+
+        // Initializes a string of the binary representations of the player and opponent board
+        String playerBoardString = String.format("%49s", Long.toBinaryString(playerBoard)).replace(" ", "0");
+        String opponentBoardString = String.format("%49s", Long.toBinaryString(opponentBoard)).replace(" ", "0");
+
+        String[][] boardArray = new String[6][7];
+        System.out.println(Arrays.toString(boardArray));
+
+        // Iterates vertically over the board
+        // Iterates vertically over the board
+        for (int row = 1; row < BOARD_HEIGHT + 1; row++) {
+            // Iterates horizontally
+            for (int col = BOARD_WIDTH - 1; col > -1; col--) {
+
+                if (playerBoardString.charAt(row + BOARD_WIDTH * col) == '1') {
+                    boardArray[row - 1][BOARD_WIDTH - 1 - col] = "red";
+                } else if (opponentBoardString.charAt(row + BOARD_WIDTH * col) == '1') {
+                    boardArray[row - 1][BOARD_WIDTH - 1 - col] = "yellow";
+                } else {
+                    boardArray[row - 1][BOARD_WIDTH - 1 - col] = null;
+                }
+            }
+        }
+
+        return boardArray;
     }
 
     @Override
