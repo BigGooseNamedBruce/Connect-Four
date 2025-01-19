@@ -2,7 +2,7 @@ package com.connectfour;
 
 import java.util.Arrays;
 import java.util.Scanner;
-import com.connectfour.*;
+import com.connectfour.game.*;
 
 public class ConnectFourTest {
     public static void main(String args[]) throws InterruptedException {
@@ -28,7 +28,13 @@ public class ConnectFourTest {
  
 
         System.out.println(board);
-        solver.solve(1);
+        String[][] a = board.toArray();
+        for (String[] r: a) {
+            System.out.println(Arrays.toString(r));
+        }
+
+        
+        //solver.solve(1);
 
         //Temp.printb(board.compute_winning_position(board.possibleNonLosingMoves(0)));
 

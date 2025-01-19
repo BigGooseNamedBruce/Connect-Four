@@ -1,4 +1,4 @@
-package com.connectfour;
+package com.connectfour.models;
 
 public class MoveRequest {
     private String player;

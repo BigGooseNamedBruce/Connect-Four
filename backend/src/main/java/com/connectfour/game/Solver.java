@@ -1,6 +1,4 @@
-package com.connectfour;
-
-import javax.swing.text.Position;
+package com.connectfour.game;
 
 public class Solver {
 

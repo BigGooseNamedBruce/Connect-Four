@@ -1,5 +1,7 @@
 package com.connectfour;
 
+import com.connectfour.game.*;
+
 public class MoveSortTest {
     public static void main(String args[]) {
         MoveSorter m = new MoveSorter();

@@ -1,6 +1,7 @@
-package com.connectfour;
+package com.connectfour.services;
 
-import org.springframework.stereotype.Service;
+import com.connectfour.game.BitBoard;
+import com.connectfour.game.Solver;
 
 public class ConnectFourService {
 

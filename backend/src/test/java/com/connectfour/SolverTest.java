@@ -9,7 +9,7 @@ import java.io.FileNotFoundException;
 import java.util.Arrays;
 import java.time.Instant;
 
-//import com.connectfour.*;
+import com.connectfour.game.*;
 
 public class SolverTest {
 
@@ -197,7 +197,7 @@ public class SolverTest {
 
     public static void main(String[] args) {
         long start = System.nanoTime(); 
-        testNegamax("src/test/resources/Test_L1_R2_Begin_Medium.txt");
+        testNegamax("src/test/resources/Test_L3_R1_End_Easy.txt");
         long end = System.nanoTime();
         System.out.println("time: " + ((end - start) / 1000000.0) + "ms");
         System.out.println("time: " + ((end - start) / 1000000.0 / count) + "ms/position");
@@ -231,14 +231,15 @@ public class SolverTest {
 
                 int testScore = solver.solve(player);
                 if (testScore == score) {
-                    System.out.println("True " + count);
+                    //System.out.println("True " + count);
+                    ;
                 } else {
                     System.out.println("False: " + testScore + " != " + score + " " + count);
                 }
 
                 board.clear();
                 //break;
-                if (count >= 100) {
+                if (count >= 1000) {
                     return;
                 }
             }
