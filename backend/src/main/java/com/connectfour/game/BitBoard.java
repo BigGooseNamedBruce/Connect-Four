@@ -2,32 +2,53 @@ package com.connectfour.game;
 
 import java.util.Arrays;
 
+/**
+ * This file contains all the methods related to the Connect Four board
+ * 
+ * @author Brayden T
+ * 
+ */
+
 public class BitBoard {
     
+    // Initalizing constants
     public static final int BOARD_HEIGHT = 6;
     public static final int BOARD_WIDTH = 7;
-    public final int MIN_SCORE = -(BOARD_WIDTH * BOARD_HEIGHT) / 2 + 3;
-    public final int MAX_SCORE = (BOARD_WIDTH * BOARD_HEIGHT + 1) / 2 - 3;
-    public final long bottomMask = bottomMask();
-    public final long boardMask = bottomMask * ((1L << BOARD_HEIGHT) - 1);
+    public static final int MIN_SCORE = -(BOARD_WIDTH * BOARD_HEIGHT) / 2 + 3;
+    public static final int MAX_SCORE = (BOARD_WIDTH * BOARD_HEIGHT + 1) / 2 - 3;
+    private static final long BOTTOM_MASK = bottomMask();
+    private static final long BOARD_MASK = BOTTOM_MASK * ((1L << BOARD_HEIGHT) - 1);
 
+    // Initializing the instance variables
     private long playerBoard;
     private long opponentBoard;
     private long mask;
     private int spacesLeft;
 
+    /**
+     * Default constructor that will initialize a new board
+     *
+     */
     public BitBoard() {
         clear();
     }
 
+    /**
+     * Parameterized constructor that will inialize a copy of a board
+     * 
+     * @param bitBoard A BitBoard object that will be copied from
+     */
     public BitBoard(BitBoard bitBoard) {
         this.playerBoard = bitBoard.playerBoard;
         this.opponentBoard = bitBoard.opponentBoard;
         this.mask = bitBoard.mask;
         this.spacesLeft = bitBoard.spacesLeft;
-
     }
 
+    /**
+     * This method resets the board to its default settings
+     * 
+     */
     public void clear() {
         playerBoard = 0;
         opponentBoard = 0;
@@ -35,24 +56,42 @@ public class BitBoard {
         spacesLeft = BOARD_HEIGHT * BOARD_WIDTH;
     }
 
+    /**
+     * This method checks if a column if full or not. It will
+     * return true if it is full and false if it isn't
+     * 
+     * @param col An int representing the column being checked
+     * @return A boolean determining if the column if full
+     */
     public boolean isColumnFull(int col) {
-        return (mask & topMask(col)) != 0;
-    }
-
-    private long topMask(int col) {
-        return (1L << (BOARD_HEIGHT - 1)) << (col * (BOARD_HEIGHT + 1));
+        return (mask & topMaskColumn(col)) != 0;
     }
     
     /**
+     * Given a column and a player, this method will place a disc in that column for the given player
      * 
-     * @param col
-     * @param player 1 represents the player and 0 represents the opponent
+     * @param col An int representing the column a dics is being placed
+     * @param player A char representing the player
      */
-    public void placeDisc(int col, int player) {
+    public void placeDisc(int col, char player) {
+        // Calculates the cell the disc will be placed at for the other placeDisc() method
+        placeDisc(mask + bottomMaskColumn(col), player);
+    }
 
-        mask |= mask + bottomMaskColumn(col);
-
-        if (player == 1) {
+    /**
+     * Given a number representing the cell a disc will be placed and a player, 
+     * this method will place a disc in that cell for the given player
+     * 
+     * @param move A long representing the cell the disc will be placed at
+     * @param player A char representing the player
+     */
+    public void placeDisc(long move, char player) {
+        
+        // Places the disc at the given cell
+        mask |= move;
+        
+        // Checks which player board to update
+        if (player == 'r') {
             playerBoard = mask ^ opponentBoard;
         } else {
             opponentBoard = mask ^ playerBoard;
@@ -61,14 +100,15 @@ public class BitBoard {
         spacesLeft--;
     }
 
+
     /**
-     * Removes the top piece of the column
+     * Given a column, this method will remove the top disc in that column
      * 
-     * @param col The int representing the column of the piece that will be removed
+     * @param col An int representing the column that the disc will be removed from
      */
     public void removeDisc(int col) {
 
-        // Gets the binary representation of the piece that is going to be removed
+        // Calculates the binary representation of the piece that is going to be removed
         long removedPiece = columnMask(col) & mask;
         removedPiece = ~(removedPiece) & ((removedPiece << 1) ^ removedPiece);
         removedPiece = removedPiece >> 1;
@@ -88,21 +128,27 @@ public class BitBoard {
         
     }
 
-    private long bottomMaskColumn(int col) {
-        return 1L << (col * (BOARD_HEIGHT + 1));
-    }
-
-
-    public boolean checkWinner(int player) {
+    /**
+     * Given a player, this wrapper method will check if that player has won or not
+     * 
+     * @param player A char representing the player ('r' is red and 'y' is yellow)
+     * @return A boolean determining if the given player has won
+     */
+    public boolean checkWinner(char player) {
 
         // Gets the board to check the winner for
-        if (player == 1) {
+        if (player == 'r') {
             return checkWinner(playerBoard);
         } else {
             return checkWinner(opponentBoard);
         }
     }
-
+    /**
+     * Given a board, this helper method will determine if that board contains a connect four
+     * 
+     * @param board A long representing a player board
+     * @return A boolean determining if the given board contains a connect four
+     */
     private boolean checkWinner(long board) {
 
         // Checks for horizontal win
@@ -132,27 +178,25 @@ public class BitBoard {
         return false;
     }
 
-    public boolean isWinningMove(int col, int player) {
-        long board;
-        if (player == 1) {
-            board = playerBoard;
-        } else {
-            board = opponentBoard;
-        }
-
-        board |= (mask + bottomMaskColumn(col)) & columnMask(col);
-
-        return checkWinner(board);
+    /**
+     * Checks if a player can win within the next move
+     * 
+     * @param player A char representing the player
+     * @return A boolean determining if the given player can win within the next move
+     */
+    public boolean canWinNext(char player) {
+        return (winningPosition(player) & possible()) != 0;
     }
 
-    public boolean canWinNext(int player) {
-        return (winning_position(player) & possible()) != 0;
-    }
-
-    public long possibleNonLosingMoves(int player) {
+    public long possibleNonLosingMoves(char player) {
 
         long possibleMask = possible();
-        long opponentWin = winning_position(player ^ 1);
+        long opponentWin;
+        if (player == 'r') {
+            opponentWin = winningPosition('y');
+        } else {
+            opponentWin = winningPosition('r');
+        }
         long forcedMoves = possibleMask & opponentWin;
         if (forcedMoves != 0) {
             if ((forcedMoves & (forcedMoves - 1)) != 0) {
@@ -165,12 +209,12 @@ public class BitBoard {
         return possibleMask & ~(opponentWin >> 1);
     }
 
-    public long winning_position(int player) {
+    private long winningPosition(char player) {
 
-        if (player == 1) {
-            return compute_winning_position(playerBoard);
+        if (player == 'r') {
+            return computeWinningPosition(playerBoard);
         } else {
-            return compute_winning_position(opponentBoard);
+            return computeWinningPosition(opponentBoard);
         }
     } 
 
@@ -180,16 +224,16 @@ public class BitBoard {
      * @return A bitmap of all the possible playable moves 
      */
     public long possible() {
-        return (mask + bottomMask) & boardMask;
+        return (mask + BOTTOM_MASK) & BOARD_MASK;
     }
 
     /**
-     * Gets a bitmap of all the possible connect fours
+     * Calculates a bitmap of all the possible connect fours within the next move
      * 
-     * @param board A board of either the player of the opponent
+     * @param board A long 
      * @return A bitmap containing all the possible connect fours
      */
-    public long compute_winning_position(long board) {
+    private long computeWinningPosition(long board) {
 
         // Checks if a vertically move can lead to a win
         long r = (board << 1) & (board << 2) & (board << 3);
@@ -221,72 +265,100 @@ public class BitBoard {
         r |= p & (board >> 3*BOARD_HEIGHT);
 
         
-        return r & (boardMask ^ mask);
+        return r & (BOARD_MASK ^ mask);
 
     }
 
-    public int moveScore(long move, int player) {
-        if (player == 1) {
-            return popcount(compute_winning_position(playerBoard | move));
+    public int moveScore(long move, char player) {
+        if (player == 'r') {
+            return popcount(computeWinningPosition(playerBoard | move));
         } else {
-            return popcount(compute_winning_position(opponentBoard | move));
+            return popcount(computeWinningPosition(opponentBoard | move));
         }
     }
 
-    public int popcount(long bits) {
-        int count;
-        for (count = 0; bits != 0; count++) {
-            bits &= bits - 1;
+    /**
+     * Counts the number of bits in the binary representation of the board
+     * 
+     * @param board A long representing the amount of 1s needed to be counted
+     * @return An int representing the amount of bits there are 1
+     */
+    private static int popcount(long board) {
+        int bits;
+        for (bits = 0; board != 0; bits++) {
+            board &= board - 1;
         }
 
-        return count;
+        return bits;
     }
 
-    public void play(long move, int player) {
-
-        mask |= move;
-
-        if (player == 1) {
-            playerBoard = mask ^ opponentBoard;
-        } else {
-            opponentBoard = mask ^ playerBoard;
-        }
-
-        spacesLeft--;
-    }
-
-    public long columnMask(int col) {
-        return ((1L << BOARD_HEIGHT) - 1) << (col * (BOARD_HEIGHT + 1));
-    }
- 
+    /**
+     * Checks if the game has become a draw
+     * 
+     * @return A boolean determining if the game currently a draw
+     */
     public boolean checkDraw() {
         return spacesLeft == 0;
     }
 
-    public long getplayerBoard() {
-        return playerBoard;
-    }
-
-    public long getopponentBoard() {
-        return opponentBoard;
-    }
-
+    /**
+     * Accessor method to get the amount of empty cells on the board
+     * 
+     * @return An int representing the amount of empty cells on the board
+     */
     public int getSpacesLeft() {
         return spacesLeft;
     }
 
+    /**
+     * Generates a unique key for any Connect Four position
+     * 
+     * @return A long representing a unique key for a given position
+     */
     public long key() {
 
         long bottom = 0;
-
-        for (int i = 0; i < BOARD_WIDTH; i++) {
-            bottom += bottomMaskColumn(i);
+        for (int col = 0; col < BOARD_WIDTH; col++) {
+            bottom += bottomMaskColumn(col);
         }
 
         return playerBoard + bottom + mask;
     }
 
-    public long bottomMask() {
+    /**
+     * Generates a mask for the entire given column For example, the following 
+     * would be the column mask for column 3 and for a 7x6 Connect Four board
+     * 
+     * 0001000
+     * 0001000
+     * 0001000
+     * 0001000
+     * 0001000
+     * 0001000
+     * 0001000
+     * 
+     * @param col An int representing the column for which the column mask needs to be found
+     * @return A long representing the column mask
+     */
+    public static long columnMask(int col) {
+        return ((1L << BOARD_HEIGHT) - 1) << (col * (BOARD_HEIGHT + 1));
+    }
+
+    /**
+     * Generates a bottom mask for a board. For example, the following 
+     * would be the bottom mask for a 7x6 Connect Four board
+     * 
+     * 0000000
+     * 0000000
+     * 0000000
+     * 0000000
+     * 0000000
+     * 0000000
+     * 1111111
+     * 
+     * @return A long representing the bottom mask
+     */
+    private static long bottomMask() {
         long boardMask = 0;
         for (int i = 0; i < BOARD_WIDTH; i++) {
             boardMask += 1L << (BOARD_HEIGHT + 1) * i;
@@ -294,18 +366,68 @@ public class BitBoard {
         return boardMask;
     }
 
+    /**
+     * Generates a top mask for a column. For example, the following 
+     * would be the top mask for column 3 and for a 7x6 Connect Four board
+     * 
+     * 0001000
+     * 0000000
+     * 0000000
+     * 0000000
+     * 0000000
+     * 0000000
+     * 0000000
+     * 
+     * @param col An int representing the column for which the top mask needs to be found
+     * @return A long representing the top mask for that column
+     */
+    private static long topMaskColumn(int col) {
+        return (1L << (BOARD_HEIGHT - 1)) << (col * (BOARD_HEIGHT + 1));
+    }
+
+    /**
+     * Generates a bottom mask for a column. For example, the following 
+     * would be the bottom mask for column 3 and for a 7x6 Connect Four board
+     * 
+     * 0000000
+     * 0000000
+     * 0000000
+     * 0000000
+     * 0000000
+     * 0000000
+     * 0001000
+     * 
+     * @param col An int representing the column for which the bottom mask needs to be found
+     * @return A long representing the bottom mask for that column
+     */
+    private static long bottomMaskColumn(int col) {
+        return 1L << (col * (BOARD_HEIGHT + 1));
+    }
+
+    /**
+     * Converts a board position to a binary string
+     * 
+     * @param board A long representing a board
+     * @return A binary string of the board
+     */
+    private static String boardToBinaryString(long board) {
+        String boardString = String.format("%49s", Long.toBinaryString(board));
+        boardString = boardString.replace(" ", "0");
+
+        return boardString;
+    }
+
+
+
     public String[][] toArray() {
 
-
-
         // Initializes a string of the binary representations of the player and opponent board
-        String playerBoardString = String.format("%49s", Long.toBinaryString(playerBoard)).replace(" ", "0");
-        String opponentBoardString = String.format("%49s", Long.toBinaryString(opponentBoard)).replace(" ", "0");
+        String playerBoardString = boardToBinaryString(playerBoard);
+        String opponentBoardString = boardToBinaryString(opponentBoard);
 
         String[][] boardArray = new String[6][7];
         System.out.println(Arrays.toString(boardArray));
 
-        // Iterates vertically over the board
         // Iterates vertically over the board
         for (int row = 1; row < BOARD_HEIGHT + 1; row++) {
             // Iterates horizontally
@@ -324,13 +446,18 @@ public class BitBoard {
         return boardArray;
     }
 
+    
+    /**
+     * Returns a visual representation of the Connect Four board
+     * 
+     * @return A string of the Connect Four Board
+     */
     @Override
     public String toString() {
         
         // Initializes a string of the binary representations of the player and opponent board
-        String playerBoardString = String.format("%49s", Long.toBinaryString(playerBoard)).replace(" ", "0");
-        String opponentBoardString = String.format("%49s", Long.toBinaryString(opponentBoard)).replace(" ", "0");
-
+        String playerBoardString = boardToBinaryString(playerBoard);
+        String opponentBoardString = boardToBinaryString(opponentBoard);
         String boardString = "-----------------------------\n";
 
         // Iterates vertically over the board

@@ -16,7 +16,7 @@ public class SolverTest {
     BitBoard board;
     Solver solver;
     static int count = 0;
-    int player;
+    char player;
 
 
     @BeforeEach
@@ -24,7 +24,7 @@ public class SolverTest {
         board = new BitBoard();
         solver = new Solver(board);
         count = 0;
-        player = 1;
+        player = 'r';
     }
 
     @Test
@@ -188,16 +188,9 @@ public class SolverTest {
         }
     }
 
-    @Test
-    void popcountTest() {
-        BitBoard b = new BitBoard();
-        assertEquals(b.popcount(5L), 2);
-    }
-
-
     public static void main(String[] args) {
         long start = System.nanoTime(); 
-        testNegamax("src/test/resources/Test_L3_R1_End_Easy.txt");
+        testNegamax("backend/src/test/resources/Test_L1_R1_Begin_Easy.txt");
         long end = System.nanoTime();
         System.out.println("time: " + ((end - start) / 1000000.0) + "ms");
         System.out.println("time: " + ((end - start) / 1000000.0 / count) + "ms/position");
@@ -209,7 +202,7 @@ public class SolverTest {
         BitBoard board = new BitBoard();
         Solver solver = new Solver(board);
         //char player = 'X';
-        int player = 1;
+        char player = 'r';
         
 
         try {
@@ -227,12 +220,11 @@ public class SolverTest {
                     board.placeDisc(Character.getNumericValue(moveOrder.charAt(i) - 1), player);
                     player = solver.getOpponent(player);
                 }
-                //System.out.println(board);
+                
 
                 int testScore = solver.solve(player);
                 if (testScore == score) {
-                    //System.out.println("True " + count);
-                    ;
+                    System.out.println("True " + count);
                 } else {
                     System.out.println("False: " + testScore + " != " + score + " " + count);
                 }
@@ -246,7 +238,6 @@ public class SolverTest {
         } catch (FileNotFoundException fileNotFoundException) {
             System.out.printf("%s not found", filename);
         }
-        
         
 
     }

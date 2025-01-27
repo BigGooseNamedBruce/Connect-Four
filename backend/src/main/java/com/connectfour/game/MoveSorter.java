@@ -50,6 +50,7 @@ public class MoveSorter {
         }
     }
 
+    @Override
     public String toString() {
         return String.format("%s %d", Arrays.toString(entries), size);
     }

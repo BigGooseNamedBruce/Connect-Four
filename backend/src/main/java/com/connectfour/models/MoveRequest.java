@@ -5,11 +5,11 @@ public class MoveRequest {
     private int column;
 
     // Getters and setters
-    public int getPlayer() {
+    public char getPlayer() {
         if (player.equals("red")) {
-            return 1;
+            return 'r';
         }
-        return 0;
+        return 'y';
     }
 
     public void setPlayer(String player) {

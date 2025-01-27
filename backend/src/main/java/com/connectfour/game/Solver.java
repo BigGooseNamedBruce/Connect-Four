@@ -1,5 +1,12 @@
 package com.connectfour.game;
 
+/**
+ * This file contains all the methods related to the Connect Four solver
+ * 
+ * @author Brayden T
+ * 
+ */
+
 public class Solver {
 
     private BitBoard board;
@@ -14,12 +21,12 @@ public class Solver {
 
 
     /**
-     * This method finds the best move
-     * @param board
+     * Given a player, this method will find the best move for that player
+     * 
      * @param player An char representing which player
-     * @return
+     * @return An int of the column that is the best move
      */
-    public int findBestMove(int player) {
+    public int findBestMove(char player) {
 
         int bestMove = -1;
         int score;
@@ -52,7 +59,7 @@ public class Solver {
 
     }
 
-    public int solve(int player) {
+    public int solve(char player) {
         if (board.canWinNext(player)) {
             return (board.getSpacesLeft() + 1) / 2;
         }
@@ -79,19 +86,29 @@ public class Solver {
 
     }
 
-
-    private int negamax(BitBoard board, int player, int alpha, int beta) {
+    /**
+     * 
+     * 
+     * @param board
+     * @param player
+     * @param alpha
+     * @param beta
+     * @return An int representing the score of that position
+     */
+    private int negamax(BitBoard board, char player, int alpha, int beta) {
         // Checks if the position is drawn
         if (board.checkDraw()) {
             return 0;
         }
 
-        for (int col = 0; col < board.BOARD_WIDTH; col++) {
+        // Checks if a player can win in the next move
+        for (int col = 0; col < BitBoard.BOARD_WIDTH; col++) {
             if (!board.isColumnFull(col) & board.canWinNext(player)) {
                 return (board.getSpacesLeft() + 1) / 2;
             }
         }
 
+        
         long possible = board.possibleNonLosingMoves(player);
         if(possible == 0) {
             return -(board.getSpacesLeft()) / 2;
@@ -117,8 +134,8 @@ public class Solver {
         long key = board.key();
         int value = table.get(key);
         if (value != 0) {
-            if (value > board.MAX_SCORE - board.MIN_SCORE + 1) {
-                min = value + 2 * board.MIN_SCORE - board.MAX_SCORE - 2;
+            if (value > BitBoard.MAX_SCORE - BitBoard.MIN_SCORE + 1) {
+                min = value + 2 * BitBoard.MIN_SCORE - BitBoard.MAX_SCORE - 2;
                 if (alpha < min) {
                     alpha = min;
                     if (alpha >= beta) {
@@ -126,7 +143,7 @@ public class Solver {
                     }
                 }
             } else {
-              max = value + board.MIN_SCORE - 1;
+              max = value + BitBoard.MIN_SCORE - 1;
               if (beta > max) {
                 beta = max;
                 if (alpha >= beta) {
@@ -138,7 +155,7 @@ public class Solver {
 
         MoveSorter moves = new MoveSorter();
         for (int i = BitBoard.BOARD_WIDTH - 1; i >= 0; i--) {
-            long move = possible & board.columnMask(moveOrder[i]);
+            long move = possible & BitBoard.columnMask(moveOrder[i]);
             if (move != 0) {
                 moves.add(move, board.moveScore(move, player));
             }
@@ -147,14 +164,14 @@ public class Solver {
         long next = moves.getNext();
 
         while(next != 0) {
-            BitBoard board2 = new BitBoard(board);
-            board2.play(next, player);
+            BitBoard copyBoard = new BitBoard(board);
+            copyBoard.placeDisc(next, player);
             next = moves.getNext();
             
-            int score = -negamax(board2, getOpponent(player), -beta, -alpha);
+            int score = -negamax(copyBoard, getOpponent(player), -beta, -alpha);
             
             if (score >= beta) {
-                table.put(key, (byte) (score + board.MAX_SCORE - 2 * board.MIN_SCORE + 2));
+                table.put(key, (byte) (score + BitBoard.MAX_SCORE - 2 * BitBoard.MIN_SCORE + 2));
                 return score;
             }
 
@@ -163,18 +180,21 @@ public class Solver {
             }
         }
 
-        table.put(key, (byte) (alpha - board.MIN_SCORE + 1));
+        table.put(key, (byte) (alpha - BitBoard.MIN_SCORE + 1));
         return alpha;
     }
 
-    public void loadPosition(String position, int player) {
+    public void loadPosition(String position, char player) {
         for (int i = 0; i < position.length(); i++) {
             board.placeDisc(Character.getNumericValue(position.charAt(i) - 1), player);
             player = getOpponent(player);
         }
     }
 
-    public int getOpponent(int player) {
-        return player ^ 1;
+    public char getOpponent(char player) {
+        if (player == 'r') {
+            return 'y';
+        }
+        return 'r';
     }
 }
