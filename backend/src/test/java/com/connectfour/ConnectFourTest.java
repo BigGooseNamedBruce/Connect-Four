@@ -13,7 +13,7 @@ public class ConnectFourTest {
 
         Solver solver = new Solver(board);
         System.out.println(board);
-        int player = 1;
+        char player = 'r';
         //board.placeDisc(3, 'X');
         //65323776614155213553376652122427
         String s = "3464123621337153667644637227";

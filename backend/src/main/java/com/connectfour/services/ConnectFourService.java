@@ -34,13 +34,18 @@ public class ConnectFourService {
         this.solver = Solver(board);
     } */
 
-    public String[][] playerMove(int column, int player) {
+    public String[][] playerMove(int column, char player) {
         board.placeDisc(column, player);
         return board.toArray();
     }
 
-    public BitBoard computerMove(int player) {
-        int bestMove = solver.findBestMove(player ^ 1);
+    public BitBoard computerMove(char player) {
+        if (player == 'r') {
+            player = 'y';
+        } else {
+            player = 'r';
+        }
+        int bestMove = solver.findBestMove(player);
         board.placeDisc(bestMove, player);
         return board;
     }
