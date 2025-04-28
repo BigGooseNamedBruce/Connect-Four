@@ -8,9 +8,10 @@ import axios from "axios";
 function App() {
   const [board, setBoard] = useState(Array(6).fill(null).map(() => Array(7).fill(null)));
   const [currentPlayer, setCurrentPlayer] = useState("red");
+  const [winner, setWinner] = useState(null);
 
-  // Fetch the current board state from the backend
-  useEffect(() => {
+
+  const fetchBoardData = () => {
     axios
       .get("http://localhost:8080/api/connectfour/position")
       .then((response) => {
@@ -19,11 +20,19 @@ function App() {
       .catch((error) => {
         console.error("Error fetching board", error);
       });
-  }, []); // Empty dependency array to run only once after component mount
+  }
 
-    // Handle player move by sending the column and player to the backend
+  const reset = () => {
+    axios
+    .post("http://localhost:8080/api/connectfour/reset", {})
+    .then(() => {
+      setBoard(Array(6).fill(null).map(() => Array(7).fill(null)));
+    }).catch((error) => {
+      console.error("Error resetting", error);
+    });
+  }
 
-   const dropPiece = (col) => {
+  const dropPiece = (col) => {
     axios
       .post("http://localhost:8080/api/connectfour/move", {
         player: currentPlayer, // Send the current player (either "red" or "yellow")
@@ -37,6 +46,15 @@ function App() {
         console.error("Error making move", error);
       });
   };
+
+
+  // Fetch the current board state from the backend
+  useEffect(() => {
+    //fetchBoardData();
+    reset();
+  }, []); // Empty dependency array to run only once after component mount
+
+    // Handle player move by sending the column and player to the backend
 
 
   return (

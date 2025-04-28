@@ -58,4 +58,17 @@ public class ConnectFourService {
         return board.toArray();
     }
 
+    public void reset() {
+        board.clear();
+    }
+
+    public String checkWinner() {
+        if (board.checkWinner('r')) {
+            return "red";
+        } else if (board.checkWinner('y')) {
+            return "yellow";
+        } else {
+            return null;
+        }
+    }
 } 

@@ -11,18 +11,24 @@ import com.connectfour.models.MoveRequest;
 @RestController
 @RequestMapping("/api/connectfour")
 public class ConnectFourController {
-    private final ConnectFourService connect4Service = new ConnectFourService();
+    private final ConnectFourService connectfourService = new ConnectFourService();
 
     // Get the current game state
     @GetMapping("/position")
     public String[][] getGamePosition() {
-        return connect4Service.getGameArrayPosition();
+        return connectfourService.getGameArrayPosition();
     }
 
     // Make a move for a player
     @PostMapping("/move")
     public String[][] makeMove(@RequestBody MoveRequest moveRequest) {
         System.out.println("Received move: " + moveRequest);
-        return connect4Service.playerMove(moveRequest.getColumn(), moveRequest.getPlayer());
+        return connectfourService.playerMove(moveRequest.getColumn(), moveRequest.getPlayer());
+    }
+    
+
+    @PostMapping("/reset")
+    public void reset() {
+        connectfourService.reset();
     }
 }
