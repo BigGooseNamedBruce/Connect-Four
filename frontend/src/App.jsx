@@ -4,11 +4,13 @@ import viteLogo from '/vite.svg'
 import React from 'react';
 import Board from './Board';
 import axios from "axios";
+import WinScreen from './WinScreen';
 
 function App() {
   const [board, setBoard] = useState(Array(6).fill(null).map(() => Array(7).fill(null)));
   const [currentPlayer, setCurrentPlayer] = useState("red");
-  const [winner, setWinner] = useState(null);
+  const [isWinScreenOpen, setWinScreenOpen] = useState(true);
+  const [winnerColour, setWinnerColour] = useState(null);
 
 
   const fetchBoardData = () => {
@@ -16,6 +18,24 @@ function App() {
       .get("http://localhost:8080/api/connectfour/position")
       .then((response) => {
         setBoard(response.data); // Assuming the response contains the board as a 2D array
+      })
+      .catch((error) => {
+        console.error("Error fetching board", error);
+      });
+  }
+
+  const fetchWinner = () => {
+    axios
+      .get("http://localhost:8080/api/connectfour/winner")
+      .then((response) => {
+        console.log(response.data)
+        if (response.data == "red") {
+          setWinScreenOpen(true)
+          setWinnerColour("Red")
+        } else if (response.data == "yellow") {
+          setWinScreenOpen(true)
+          setWinnerColour("Yellow")
+        }
       })
       .catch((error) => {
         console.error("Error fetching board", error);
@@ -47,14 +67,22 @@ function App() {
       });
   };
 
+  const openWinScreen = () => setWinScreenOpen(true);
+  const closeWinScreen = () => setWinScreenOpen(false);
+
 
   // Fetch the current board state from the backend
   useEffect(() => {
     //fetchBoardData();
     reset();
+    closeWinScreen();
   }, []); // Empty dependency array to run only once after component mount
 
-    // Handle player move by sending the column and player to the backend
+
+  useEffect(() => {
+    fetchWinner();
+  }, [board]);  // Only run when the board changes
+
 
 
   return (
@@ -66,10 +94,11 @@ function App() {
             className={`cell ${cell || ""}`} // Add cell color based on the player
             data-row={rowIndex}
             data-col={colIndex}
-            onClick={() => dropPiece(colIndex)} // Call dropPiece with the column index
+            onClick={() => dropPiece(colIndex)}
           ></div>
         ))
       ))}
+      <WinScreen isOpen={isWinScreenOpen} colour={winnerColour}/>
     </div>
   );
 }

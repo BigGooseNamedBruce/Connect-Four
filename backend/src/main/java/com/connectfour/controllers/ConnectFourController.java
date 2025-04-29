@@ -19,6 +19,11 @@ public class ConnectFourController {
         return connectfourService.getGameArrayPosition();
     }
 
+    @GetMapping("/winner")
+    public String getWinner() {
+        return connectfourService.checkWinner();
+    }
+
     // Make a move for a player
     @PostMapping("/move")
     public String[][] makeMove(@RequestBody MoveRequest moveRequest) {

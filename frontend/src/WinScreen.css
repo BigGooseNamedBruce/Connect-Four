@@ -1,0 +1,36 @@
+.win-overlay {
+    position: fixed;       /* Make it cover the entire screen */
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
+    display: flex;
+    justify-content: center; /* Center the modal horizontally */
+    align-items: center;     /* Center the modal vertically */
+    z-index: 1000;           /* Ensure it's above the board */
+  }
+  
+/* This is the content box of the modal */
+.win-content {
+    width: 750px;
+    height: 200px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background-color: #008CBA;
+    color: white;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    z-index: 1001;           /* Ensure it's above the overlay */
+  }
+
+.win {
+    height: 200px;
+    width: 300px;
+    display: flex;
+    justify-content: center;
+    background-color: #008CBA;
+}
