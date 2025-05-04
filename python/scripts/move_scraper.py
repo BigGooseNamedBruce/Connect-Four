@@ -10,8 +10,8 @@ from playwright.async_api import async_playwright, TimeoutError
 
 
 
-COMPUTED_POSITIONS_PATH = "../backend/src/main/resources/opening_book.bin"
-VALID_POSITIONS_PATH = "data/moves.txt"
+COMPUTED_POSITIONS_PATH = "../../backend/src/main/resources/opening_book.bin"
+VALID_POSITIONS_PATH = "../data/moves.txt"
 TIMEOUT = 5000
 RETRIES = 5
 BATCH_SIZE = 35

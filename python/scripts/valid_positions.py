@@ -8,7 +8,7 @@ import os
 from collections import Counter
 
 MOVELENGTH = 6
-OUTPUTFILE = "data/moves.txt"
+OUTPUTFILE = "../data/moves.txt"
 
 class Bitboard():
 

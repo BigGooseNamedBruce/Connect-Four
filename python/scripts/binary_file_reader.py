@@ -6,7 +6,7 @@ position and the following 2 bytes is the score
 
 import os
 
-FILEPATH = "../backend/src/main/resources/opening_book.bin"
+FILEPATH = "../../backend/src/main/resources/opening_book.bin"
 
 def read_file(filename):
     try:
