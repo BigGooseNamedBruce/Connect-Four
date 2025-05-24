@@ -20,7 +20,10 @@ public class Play {
                 System.out.printf("Columns %d is full\n", move);
                 continue;
             }
-            board.placeDisc(move - 1, player);
+            if (player == 'r') {
+                board.placeDisc(move - 1, player);
+            }
+            
 
             if (board.checkWinner('r')) {
                 break;
@@ -28,9 +31,17 @@ public class Play {
 
             player = solver.getOpponent(player);
 
+            int bestMove = solver.findBestMove(player);
+
+            if (player == 'y') {
+                board.placeDisc(bestMove, player);
+            }
+
             if (board.checkWinner('y')) {
                 break;
             }
+
+            player = solver.getOpponent(player);
         }
 
         System.out.println(board);
