@@ -10,15 +10,18 @@ package com.connectfour.game;
 public class Solver {
 
     private BitBoard board;
-    private final int TRANSPOSITION_TABLE_SIZE = (int) Math.pow(2, 23);
-    private TranspositionTable table;
+    private final int TRANSPOSITION_TABLE_SIZE = 536870909;
+    private final String FILEPATH = "src\\main\\resources\\opening_book.bin";
+    public TranspositionTable table;
     private int[] moveOrder = {3, 4, 2, 5, 1, 6, 0};
+    private OpeningBook openingBook;
 
     public Solver(BitBoard board) {
         this.board = board;
         this.table = new TranspositionTable(TRANSPOSITION_TABLE_SIZE);
+        this.openingBook = new OpeningBook(this.table, FILEPATH);
+        this.openingBook.load();
     }
-
 
     /**
      * Given a player, this method will find the best move for that player
@@ -38,11 +41,12 @@ public class Solver {
             if (!board.isColumnFull(col)) {
                 
                 board.placeDisc(col, player);
-                
-                if (board.checkDraw()) {
+                if (board.checkWinner(player)) {
+                    return (board.getSpacesLeft() + 2) / 2;
+                } 
+
+                else if (board.checkDraw()) {
                     score = 0;
-                } else if (board.checkWinner(player)) {
-                    score = (board.getSpacesLeft() + 2) / 2;
                 } else {
                     score = -solve(getOpponent(player));
                 }
@@ -66,7 +70,7 @@ public class Solver {
 
         int min = -board.getSpacesLeft() / 2;
         int max = (board.getSpacesLeft() + 1) / 2;
-
+        
         while (min < max) {
             int med = min + (max - min) / 2;
             if (med <= 0 && min / 2 < med) {
@@ -96,17 +100,18 @@ public class Solver {
      * @return An int representing the score of that position
      */
     private int negamax(BitBoard board, char player, int alpha, int beta) {
+        //System.out.println("Here");
         // Checks if the position is drawn
         if (board.checkDraw()) {
             return 0;
         }
 
-        // Checks if a player can win in the next move
-        for (int col = 0; col < BitBoard.BOARD_WIDTH; col++) {
-            if (!board.isColumnFull(col) & board.canWinNext(player)) {
-                return (board.getSpacesLeft() + 1) / 2;
-            }
-        }
+        // // Checks if a player can win in the next move
+        // for (int col = 0; col < BitBoard.BOARD_WIDTH; col++) {
+        //     if (!board.isColumnFull(col) & board.canWinNext(player)) {
+        //         return (board.getSpacesLeft() + 1) / 2;
+        //     }
+        // }
 
         
         long possible = board.possibleNonLosingMoves(player);
@@ -133,7 +138,15 @@ public class Solver {
 
         long key = board.key();
         int value = table.get(key);
+
+        // Gets value from opening book
+        if (openingBook.contains(key)) {
+            return openingBook.get(key);
+        }
+
+        // Gets value from the transposition table
         if (value != 0) {
+            //System.out.println(String.format("%d %d", key, value));
             if (value > BitBoard.MAX_SCORE - BitBoard.MIN_SCORE + 1) {
                 min = value + 2 * BitBoard.MIN_SCORE - BitBoard.MAX_SCORE - 2;
                 if (alpha < min) {
@@ -169,6 +182,7 @@ public class Solver {
             next = moves.getNext();
             
             int score = -negamax(copyBoard, getOpponent(player), -beta, -alpha);
+          
             
             if (score >= beta) {
                 table.put(key, (byte) (score + BitBoard.MAX_SCORE - 2 * BitBoard.MIN_SCORE + 2));

@@ -45,6 +45,12 @@ public class BitBoard {
         this.spacesLeft = bitBoard.spacesLeft;
     }
 
+    public BitBoard placeAndClone(BitBoard board, long next, char player) {
+        BitBoard copyBoard = new BitBoard(board);
+        copyBoard.placeDisc(next, player);
+        return new BitBoard(copyBoard);
+    }
+
     /**
      * This method resets the board to its default settings
      * 
@@ -444,6 +450,17 @@ public class BitBoard {
         }
 
         return boardArray;
+    }
+
+    public char load(String position) {
+        char player = 'r';
+        
+        for (int i = 0; i < position.length(); i++) {
+            //System.out.println(s.charAt(i));
+            placeDisc(Character.getNumericValue(position.charAt(i) - 1), player);
+            player = (player == 'r') ? 'y': 'r';
+        }
+        return player;
     }
 
     
