@@ -1,11 +1,19 @@
 package com.connectfour.game;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.concurrent.*;
+
 /**
  * This file contains all the methods related to the Connect Four solver
  * 
  * @author Brayden T
  * 
  */
+
+
 
 public class Solver {
 
@@ -32,39 +40,56 @@ public class Solver {
     public int findBestMove(char player) {
 
         int bestMove = -1;
-        int score;
+        //int score;
         int bestScore = Integer.MIN_VALUE;
-        
-       
-        //for (int col = 0; col < board.BOARD_WIDTH; col++) {
+        ExecutorService executor = Executors.newFixedThreadPool(moveOrder.length);
+        List<Callable<Integer>> tasks = new ArrayList<>();
+        List<Integer> moves = new ArrayList<>();
+
         for (int col: moveOrder) {
             if (!board.isColumnFull(col)) {
-                
-                board.placeDisc(col, player);
-                if (board.checkWinner(player)) {
-                    return (board.getSpacesLeft() + 2) / 2;
-                } 
 
-                else if (board.checkDraw()) {
-                    score = 0;
-                } else {
-                    score = -solve(getOpponent(player));
-                }
-                
-                board.removeDisc(col);
+                BitBoard tempBoard = new BitBoard(board);
+                tempBoard.placeDisc(col, player);
 
-                if (score > bestScore) {
-                    bestMove = col;
-                    bestScore = score;
+                if (tempBoard.checkWinner(player)) {
+                    executor.shutdown();
+                    return col;
                 }
+                tasks.add(() -> {
+                    return -solve(tempBoard, getOpponent(player));
+                });
+
+                moves.add(col);
             }
         }
+
+        try {
+            List<Future<Integer>> results = executor.invokeAll(tasks);
+            for (int i = 0; i < results.size(); i++) {
+                Future<Integer> score = results.get(i);
+
+                if (score.get() > bestScore) {
+                    bestMove = moves.get(i);
+                    bestScore = score.get();
+                }
+            }
+        } catch (InterruptedException interruptedException) {
+            System.out.println(interruptedException);
+        } catch (ExecutionException executionException) {
+            System.out.println(executionException);
+        }
+        
+        executor.shutdown();
+
         return bestMove;
 
     }
 
-    public int solve(char player) {
-        if (board.canWinNext(player)) {
+    public int solve(BitBoard board, char player) {
+        if (board.checkDraw()) {
+            return 0;
+        } else if (board.canWinNext(player)) {
             return (board.getSpacesLeft() + 1) / 2;
         }
 

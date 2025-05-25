@@ -34,7 +34,7 @@ public class TranspositionTable {
      * @param key A long representing the position
      * @param value A byte representing the position's score
      */
-    public void put(long key, byte value) {
+    public synchronized void put(long key, byte value) {
         put(truncate(key), value);
     }
 
@@ -46,7 +46,7 @@ public class TranspositionTable {
      * @param key A int representing the position
      * @param value A byte representing the position's score
      */
-    public void put(int key, byte value) {
+    public synchronized void put(int key, byte value) {
         int index = index(key);
         keys[index] = key;
         values[index] = value;
