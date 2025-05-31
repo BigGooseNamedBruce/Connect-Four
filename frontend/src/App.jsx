@@ -47,6 +47,7 @@ function App() {
     .post("http://localhost:8080/api/connectfour/reset", {})
     .then(() => {
       setBoard(Array(6).fill(null).map(() => Array(7).fill(null)));
+      setWinScreenOpen(null);
     }).catch((error) => {
       console.error("Error resetting", error);
     });
@@ -67,7 +68,6 @@ function App() {
   useEffect(() => {
     fetchWinner();
   }, [board]);  // Only run when the board changes
-
 
 
   return (
