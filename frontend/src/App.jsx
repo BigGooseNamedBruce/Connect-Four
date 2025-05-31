@@ -8,7 +8,7 @@ import WinScreen from './WinScreen';
 
 function App() {
   const [board, setBoard] = useState(Array(6).fill(null).map(() => Array(7).fill(null)));
-  const [currentPlayer, setCurrentPlayer] = useState("red");
+  const [player, setPlayer] = useState("red");
   const [isWinScreenOpen, setWinScreenOpen] = useState(true);
   const [winnerColour, setWinnerColour] = useState(null);
 
@@ -52,21 +52,6 @@ function App() {
     });
   }
 
-  const dropPiece = (col) => {
-    axios
-      .post("http://localhost:8080/api/connectfour/move", {
-        player: currentPlayer, // Send the current player (either "red" or "yellow")
-        column: col,
-      })
-      .then((response) => {
-        setBoard(response.data);
-        setCurrentPlayer(currentPlayer === "red" ? "yellow" : "red"); // Switch player
-      })
-      .catch((error) => {
-        console.error("Error making move", error);
-      });
-  };
-
   const openWinScreen = () => setWinScreenOpen(true);
   const closeWinScreen = () => setWinScreenOpen(false);
 
@@ -86,20 +71,16 @@ function App() {
 
 
   return (
-    <div className="board">
-      {board.map((row, rowIndex) => (
-        row.map((cell, colIndex) => (
-          <div
-            key={`${rowIndex}-${colIndex}`}
-            className={`cell ${cell || ""}`} // Add cell color based on the player
-            data-row={rowIndex}
-            data-col={colIndex}
-            onClick={() => dropPiece(colIndex)}
-          ></div>
-        ))
-      ))}
+    <div>
+      <Board 
+        board={board} 
+        setBoard={setBoard}
+        player={player}
+        setPlayer={setPlayer}
+      />
       <WinScreen isOpen={isWinScreenOpen} colour={winnerColour}/>
     </div>
+    
   );
 }
 
