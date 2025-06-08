@@ -12,6 +12,8 @@ public class ConnectFourService {
 
     private BitBoard board = new BitBoard();
     private Solver solver = new Solver(board);
+    private boolean status = false;
+    private int bestMove = -1;
 
     public BitBoard startNewGame() {
         board = new BitBoard();
@@ -19,35 +21,29 @@ public class ConnectFourService {
         return board;
     }
 
-    /* public Game playMove(int column) {
-        // Apply logic for making a move (place a piece in the column)
-        currentGame.playMove(column);
-        return currentGame;
-    }
-
-    public Game getGameState() {
-        return currentGame;
-    }
-    
-    public Game() {
-        this.board = BitBoard();
-        this.solver = Solver(board);
-    } */
-
     public String[][] playerMove(int column, char player) {
         board.placeDisc(column, player);
         return board.toArray();
     }
 
-    public BitBoard computerMove(char player) {
-        if (player == 'r') {
-            player = 'y';
-        } else {
-            player = 'r';
-        }
-        int bestMove = solver.findBestMove(player);
-        board.placeDisc(bestMove, player);
-        return board;
+    public int computerBestMove(char player) {
+        return solver.findBestMove(player);
+    }
+
+    public boolean getStatus() {
+        return status;
+    }
+
+    public void setStatus(boolean status) {
+        this.status = status;
+    }
+
+    public int getBestMove() {
+        return bestMove;
+    }
+
+    public void setBestMove(int bestMove) {
+        this.bestMove = bestMove;
     }
 
     public BitBoard getGamePosition() {

@@ -5,8 +5,11 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
 import com.connectfour.services.ConnectFourService;
 import com.connectfour.models.MoveRequest;
+import com.connectfour.models.PlayerRequest;
+
 
 @RestController
 @RequestMapping("/api/connectfour")
@@ -27,7 +30,7 @@ public class ConnectFourController {
     // Make a move for a player
     @PostMapping("/move")
     public String[][] makeMove(@RequestBody MoveRequest moveRequest) {
-        System.out.println("Received move: " + moveRequest);
+        //System.out.println("Received move: " + moveRequest);
         return connectfourService.playerMove(moveRequest.getColumn(), moveRequest.getPlayer());
     }
     
@@ -35,5 +38,10 @@ public class ConnectFourController {
     @PostMapping("/reset")
     public void reset() {
         connectfourService.reset();
+    }
+
+    @PostMapping("/compute")
+    public int computeBestMove(@RequestBody PlayerRequest playerRequest) {
+        return connectfourService.computerBestMove(playerRequest.getPlayer());
     }
 }

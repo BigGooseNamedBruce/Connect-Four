@@ -2,25 +2,44 @@ import { useState } from "react";
 import axios from "axios";
 import './Board.css'
 
-//function Board() {
+
 const Board = ({board, setBoard, player, setPlayer}) => {
-	//const [board, setBoard] = useState(Array(6).fill(null).map(() => Array(7).fill(null)));
-	//const [player, setCurrentPlayer] = useState("red");
-	console.log(board);
-  const dropPiece = (col) => {
-    axios
-      .post("http://localhost:8080/api/connectfour/move", {
-        player: player, // Send the current player (either "red" or "yellow")
-        column: col,
-      })
-      .then((response) => {
+
+    const dropPiece = async (col) => {
+      
+      try {
+        const response = await axios.post("http://localhost:8080/api/connectfour/move", {
+         player: player,
+         column: col,
+        });
         setBoard(response.data);
-        setPlayer(player === "red" ? "yellow" : "red"); // Switch player
-      })
-      .catch((error) => {
-        console.error("Error making move", error);
-      });
-  };
+        setPlayer(player === "red" ? "yellow" : "red");
+
+        console.log(response.data)
+      } catch (error) {
+        console.error('Error during computation:', error);
+        alert('Something went wrong!');
+      }
+    };
+  
+
+
+    const bestMove = async () => {
+      
+      try {
+        const response = await axios.post("http://localhost:8080/api/connectfour/compute", {
+         player: player === "red" ? "yellow" : "red"
+        });
+
+        console.log(response.data)
+      } catch (error) {
+        console.error('Error during computation:', error);
+        alert('Something went wrong!');
+      } finally {
+        console.log("done");
+      }
+    };
+  
 
   return (
     <div className="board">
@@ -31,7 +50,10 @@ const Board = ({board, setBoard, player, setPlayer}) => {
             className={`cell ${cell || ""}`}
             data-row={rowIndex}
             data-col={colIndex}
-            onClick={() => dropPiece(colIndex)}
+            onClick={() => {
+              dropPiece(colIndex);
+              bestMove();
+            }}
           ></div>
         ))
       ))}

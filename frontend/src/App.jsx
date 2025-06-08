@@ -2,9 +2,9 @@ import { useState, useEffect } from "react";
 import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import React from 'react';
-import Board from './Board';
+import Board from './components/Board/Board';
 import axios from "axios";
-import WinScreen from './WinScreen';
+import WinScreen from './components/WinScreen/WinScreen';
 
 function App() {
   const [board, setBoard] = useState(Array(6).fill(null).map(() => Array(7).fill(null)));
@@ -57,17 +57,17 @@ function App() {
   const closeWinScreen = () => setWinScreenOpen(false);
 
 
-  // Fetch the current board state from the backend
+
   useEffect(() => {
-    //fetchBoardData();
     reset();
     closeWinScreen();
-  }, []); // Empty dependency array to run only once after component mount
+  }, []);
 
 
   useEffect(() => {
     fetchWinner();
-  }, [board]);  // Only run when the board changes
+  }, [board]);
+
 
 
   return (
