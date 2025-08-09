@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import './Board.css'
+import LoadingScreen from '../LoadingScreen/LoadingScreen'
 
 
 const Board = ({board, setBoard, player, setPlayer}) => {
-
-    const dropPiece = async (col) => {
+    //const [isLoadingScreenOpen, setLoadingScreenOpen] = useState(false);
+    const isLoadingScreenOpen = useRef(false);
+    const dropPiece = async (col, player) => {
       
       try {
         const response = await axios.post("http://localhost:8080/api/connectfour/move", {
@@ -13,7 +15,7 @@ const Board = ({board, setBoard, player, setPlayer}) => {
          column: col,
         });
         setBoard(response.data);
-        setPlayer(player === "red" ? "yellow" : "red");
+        //setPlayer(player === "red" ? "yellow" : "red");
 
         console.log(response.data)
       } catch (error) {
@@ -24,14 +26,24 @@ const Board = ({board, setBoard, player, setPlayer}) => {
   
 
 
-    const bestMove = async () => {
+    const bestMove = async (player) => {
+      //setPlayer(player === "red" ? "yellow" : "red");
+      const newPlayer = player === "red" ? "yellow" : "red";
+      //setPlayer(newPlayer);
+      isLoadingScreenOpen.current = true;
       
+      console.log("HERE: " + player + " " + newPlayer);
       try {
         const response = await axios.post("http://localhost:8080/api/connectfour/compute", {
-         player: player === "red" ? "yellow" : "red"
+         player: player
         });
-
+        //setPlayer(player === "red" ? "yellow" : "red");
+        
+        setBoard(response.data);
+        //setPlayer(player === "red" ? "yellow" : "red");
+        //dropPiece(response.data, newPlayer)
         console.log(response.data)
+        isLoadingScreenOpen.current = false;
       } catch (error) {
         console.error('Error during computation:', error);
         alert('Something went wrong!');
@@ -39,6 +51,13 @@ const Board = ({board, setBoard, player, setPlayer}) => {
         console.log("done");
       }
     };
+
+    const place = (col, player) => {
+      if (!isLoadingScreenOpen.current) {
+        dropPiece(col, player);
+        bestMove(player === "red" ? "yellow" : "red");
+      }
+    }
   
 
   return (
@@ -51,13 +70,20 @@ const Board = ({board, setBoard, player, setPlayer}) => {
             data-row={rowIndex}
             data-col={colIndex}
             onClick={() => {
-              dropPiece(colIndex);
-              bestMove();
+              //dropPiece(colIndex, player);
+              //console.log(player);  
+              //setLoadingScreenOpen(true);
+              place(colIndex, player);
+              //bestMove();
+              //setLoadingScreenOpen(false);
+              
             }}
           ></div>
         ))
       ))}
+      <LoadingScreen isOpen={isLoadingScreenOpen.current}/>
     </div>
+    
   );
 }
 
