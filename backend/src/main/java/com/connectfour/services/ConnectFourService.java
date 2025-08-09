@@ -12,7 +12,6 @@ public class ConnectFourService {
 
     private BitBoard board = new BitBoard();
     private Solver solver = new Solver(board);
-    private boolean status = false;
     private int bestMove = -1;
 
     public BitBoard startNewGame() {
@@ -26,17 +25,19 @@ public class ConnectFourService {
         return board.toArray();
     }
 
+    public void place(int column, char player) {
+        board.placeDisc(column, player);
+    }
+
+    public String[][] toArray(){
+        return board.toArray();
+    }
+
+
     public int computerBestMove(char player) {
         return solver.findBestMove(player);
     }
 
-    public boolean getStatus() {
-        return status;
-    }
-
-    public void setStatus(boolean status) {
-        this.status = status;
-    }
 
     public int getBestMove() {
         return bestMove;

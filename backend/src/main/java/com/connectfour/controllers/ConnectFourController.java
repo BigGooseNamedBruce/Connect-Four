@@ -31,7 +31,9 @@ public class ConnectFourController {
     @PostMapping("/move")
     public String[][] makeMove(@RequestBody MoveRequest moveRequest) {
         //System.out.println("Received move: " + moveRequest);
-        return connectfourService.playerMove(moveRequest.getColumn(), moveRequest.getPlayer());
+        connectfourService.place(moveRequest.getColumn(), moveRequest.getPlayer());
+        return connectfourService.toArray();
+        //return connectfourService.playerMove(moveRequest.getColumn(), moveRequest.getPlayer());
     }
     
 
@@ -41,7 +43,9 @@ public class ConnectFourController {
     }
 
     @PostMapping("/compute")
-    public int computeBestMove(@RequestBody PlayerRequest playerRequest) {
-        return connectfourService.computerBestMove(playerRequest.getPlayer());
+    public String[][] computeBestMove(@RequestBody PlayerRequest playerRequest) {
+        int bestMove = connectfourService.computerBestMove(playerRequest.getPlayer());
+        connectfourService.place(bestMove, playerRequest.getPlayer());
+        return connectfourService.toArray();
     }
 }
