@@ -18,6 +18,7 @@ public class BitBoard {
     public static final int MAX_SCORE = (BOARD_WIDTH * BOARD_HEIGHT + 1) / 2 - 3;
     private static final long BOTTOM_MASK = bottomMask();
     private static final long BOARD_MASK = BOTTOM_MASK * ((1L << BOARD_HEIGHT) - 1);
+    private static final long[] COLUMN_MASK = generateColumnMask();
 
     // Initializing the instance variables
     private long playerBoard;
@@ -115,10 +116,12 @@ public class BitBoard {
     public void removeDisc(int col) {
 
         // Calculates the binary representation of the piece that is going to be removed
-        long removedPiece = columnMask(col) & mask;
-        removedPiece = ~(removedPiece) & ((removedPiece << 1) ^ removedPiece);
-        removedPiece = removedPiece >> 1;
+        // long removedPiece = columnMask(col) & mask;
+        // removedPiece = ~(removedPiece) & ((removedPiece << 1) ^ removedPiece);
+        // removedPiece = removedPiece >> 1;
 
+        long removedPiece = columnMask(col) & mask;
+        removedPiece = (~removedPiece >> 1) & removedPiece;
         // Removes the piece from the mask
         mask = mask ^ removedPiece;
 
@@ -298,6 +301,10 @@ public class BitBoard {
         return bits;
     }
 
+    public static int popcount(BitBoard board) {
+        return BitBoard.popcount(board.mask);
+    }
+
     /**
      * Checks if the game has become a draw
      * 
@@ -316,6 +323,30 @@ public class BitBoard {
         return spacesLeft;
     }
 
+    public long getMask() {
+        return mask;
+    }
+
+    public long getPlayerBoard() {
+        return playerBoard;
+    }
+
+    public long getOpponentBoard() {
+        return opponentBoard;
+    }
+
+    public void setMask(long mask) {
+        this.mask = mask;
+    }
+
+    public void setPlayerBoard(long playerBoard) {
+        this.playerBoard = playerBoard;
+    }
+
+    public void setOpponentBoard(long playerBoard) {
+        this.opponentBoard = opponentBoard;
+    }
+
     /**
      * Generates a unique key for any Connect Four position
      * 
@@ -323,10 +354,10 @@ public class BitBoard {
      */
     public long key() {
 
-        long bottom = 0;
-        for (int col = 0; col < BOARD_WIDTH; col++) {
-            bottom += bottomMaskColumn(col);
-        }
+        long bottom = bottomMask();
+        // for (int col = 0; col < BOARD_WIDTH; col++) {
+        //     bottom += bottomMaskColumn(col);
+        // }
 
         return playerBoard + bottom + mask;
     }
@@ -347,7 +378,16 @@ public class BitBoard {
      * @return A long representing the column mask
      */
     public static long columnMask(int col) {
-        return ((1L << BOARD_HEIGHT) - 1) << (col * (BOARD_HEIGHT + 1));
+        //return ((1L << BOARD_HEIGHT) - 1) << (col * (BOARD_HEIGHT + 1));
+        return BitBoard.COLUMN_MASK[col];
+    }
+
+    private static long[] generateColumnMask() {
+        long[] columnMask = new long[BOARD_WIDTH];
+        for (int i = 0; i < columnMask.length; i++) {
+            columnMask[i] = ((1L << BOARD_HEIGHT) - 1) << (i * (BOARD_HEIGHT + 1));
+        }
+        return columnMask;
     }
 
     /**
@@ -432,7 +472,7 @@ public class BitBoard {
         String opponentBoardString = boardToBinaryString(opponentBoard);
 
         String[][] boardArray = new String[6][7];
-        System.out.println(Arrays.toString(boardArray));
+        //System.out.println(Arrays.toString(boardArray));
 
         // Iterates vertically over the board
         for (int row = 1; row < BOARD_HEIGHT + 1; row++) {
