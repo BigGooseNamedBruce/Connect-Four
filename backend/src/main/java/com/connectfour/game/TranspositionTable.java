@@ -72,8 +72,6 @@ public class TranspositionTable {
      * @return An int representing the position the index in key and valeue array
      */
     private int index(long key) {
-        //return (int) (key & (size - 1));
-        //System.out.printf("%d %d %d\n", key, truncate(key), size);
         return truncate(key) % size;
     }
 
@@ -84,15 +82,11 @@ public class TranspositionTable {
      * @return An int representing the position the index in key and valeue array
      */
     private int index(int key) {
-        //return key & (size - 1);
         return key % size;
     }
 
     public int truncate(long key) {
-        while (key > Integer.MAX_VALUE) {
-            key >>= 1;
-        }
-        return (int) key;
+        return (int) (key << 32);
     }
 
     @Override
