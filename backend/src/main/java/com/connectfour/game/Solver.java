@@ -2,8 +2,6 @@ package com.connectfour.game;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
 import java.util.concurrent.*;
 
 /**
@@ -27,7 +25,7 @@ public class Solver {
     public Solver(BitBoard board) {
         this.board = board;
         this.table = new TranspositionTable(TRANSPOSITION_TABLE_SIZE);
-        this.openingBook = new OpeningBook(this.table, FILEPATH);
+        this.openingBook = new OpeningBook(FILEPATH);
         this.openingBook.load();
     }
 
@@ -93,6 +91,14 @@ public class Solver {
             return (board.getSpacesLeft() + 1) / 2;
         }
 
+        int popcount = BitBoard.popcount(board);
+        long key = board.key();
+        if (popcount <= 6) {
+            if (openingBook.contains(key)) {
+                return openingBook.get(key);
+            }
+        }
+
         int min = -board.getSpacesLeft() / 2;
         int max = (board.getSpacesLeft() + 1) / 2;
         
@@ -125,19 +131,11 @@ public class Solver {
      * @return An int representing the score of that position
      */
     private int negamax(BitBoard board, char player, int alpha, int beta) {
-        //System.out.println("Here");
-        // Checks if the position is drawn
+
+         // Checks if the position is drawn
         if (board.checkDraw()) {
             return 0;
         }
-
-        // // Checks if a player can win in the next move
-        // for (int col = 0; col < BitBoard.BOARD_WIDTH; col++) {
-        //     if (!board.isColumnFull(col) & board.canWinNext(player)) {
-        //         return (board.getSpacesLeft() + 1) / 2;
-        //     }
-        // }
-
         
         long possible = board.possibleNonLosingMoves(player);
         if(possible == 0) {
@@ -164,14 +162,8 @@ public class Solver {
         long key = board.key();
         int value = table.get(key);
 
-        // Gets value from opening book
-        if (openingBook.contains(key)) {
-            return openingBook.get(key);
-        }
-
         // Gets value from the transposition table
         if (value != 0) {
-            //System.out.println(String.format("%d %d", key, value));
             if (value > BitBoard.MAX_SCORE - BitBoard.MIN_SCORE + 1) {
                 min = value + 2 * BitBoard.MIN_SCORE - BitBoard.MAX_SCORE - 2;
                 if (alpha < min) {
@@ -205,9 +197,10 @@ public class Solver {
             BitBoard copyBoard = new BitBoard(board);
             copyBoard.placeDisc(next, player);
             next = moves.getNext();
-            
+
+
             int score = -negamax(copyBoard, getOpponent(player), -beta, -alpha);
-          
+
             
             if (score >= beta) {
                 table.put(key, (byte) (score + BitBoard.MAX_SCORE - 2 * BitBoard.MIN_SCORE + 2));
