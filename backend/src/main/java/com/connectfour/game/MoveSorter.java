@@ -5,46 +5,28 @@ import java.util.Arrays;
 public class MoveSorter {
 
     private int size;
-    private MoveEntry[] entries;
+    private long[] moves;
+    private int[] scores;
 
     public MoveSorter() {
         this.size = 0;
-        entries = new MoveEntry[BitBoard.BOARD_WIDTH];
-        for (int i = 0; i < BitBoard.BOARD_WIDTH; i++) {
-            entries[i] = new MoveEntry();
-        }
-    }
-
-    public static class MoveEntry {
-        long move;
-        int score;
-
-        public MoveEntry() {
-            this.move = 0;
-            this.score = 0;
-        } 
-
-        public MoveEntry(long move, int score) {
-            this.move = move;
-            this.score = score;
-        } 
-
-        public String toString() {
-            return String.format("%d %d", move, score);
-        }
+        this.moves = new long[BitBoard.BOARD_WIDTH];
+        this.scores = new int[BitBoard.BOARD_WIDTH];
     }
 
     public void add(long move, int score) {
         int pos = size++;
-        for(; pos > 0 && entries[pos-1].score > score; --pos) {
-            entries[pos] = entries[pos-1];
+        for(; pos > 0 && scores[pos-1] > score; --pos) {
+            moves[pos] = moves[pos-1];
+            scores[pos] = scores[pos-1];
         }
-        entries[pos] = new MoveEntry(move, score);
+        moves[pos] = move;
+        scores[pos] = score;
     }
 
     public long getNext() {
         if (size != 0) {
-            return entries[--size].move;
+            return moves[--size];
         } else {
             return 0;
         }
@@ -52,6 +34,6 @@ public class MoveSorter {
 
     @Override
     public String toString() {
-        return String.format("%s %d", Arrays.toString(entries), size);
+        return String.format("Moves: %s\nScores: %s", Arrays.toString(moves), Arrays.toString(scores));
     }
 }
