@@ -137,6 +137,27 @@ public class BitBoard {
         
     }
 
+    public void removeDisc(long move) {
+
+        // Calculates the binary representation of the piece that is going to be removed
+        // long removedPiece = columnMask(col) & mask;
+        // removedPiece = ~(removedPiece) & ((removedPiece << 1) ^ removedPiece);
+        // removedPiece = removedPiece >> 1;
+
+        mask = mask ^ move;
+
+        // Removes the piece from the player or opponent board
+        if ((move & playerBoard) != 0) {
+            playerBoard = mask ^ opponentBoard;
+        } else {
+            opponentBoard = mask ^ playerBoard;
+        }
+
+        // Adds a space to the total amount of spots left since a piece has been removed 
+        spacesLeft++;
+        
+    }
+
     /**
      * Given a player, this wrapper method will check if that player has won or not
      * 
@@ -335,16 +356,23 @@ public class BitBoard {
         return opponentBoard;
     }
 
+
+    public void setSpacesLeft(int spacesLeft) {
+        this.spacesLeft = spacesLeft;
+    }
+
     public void setMask(long mask) {
         this.mask = mask;
     }
 
     public void setPlayerBoard(long playerBoard) {
         this.playerBoard = playerBoard;
+        //this.mask = this.playerBoard | this.opponentBoard;
     }
 
-    public void setOpponentBoard(long playerBoard) {
+    public void setOpponentBoard(long opponentBoard) {
         this.opponentBoard = opponentBoard;
+        //this.mask = this.playerBoard | this.opponentBoard;
     }
 
     /**
@@ -456,7 +484,7 @@ public class BitBoard {
      * @param board A long representing a board
      * @return A binary string of the board
      */
-    private static String boardToBinaryString(long board) {
+    public static String boardToBinaryString(long board) {
         String boardString = String.format("%49s", Long.toBinaryString(board));
         boardString = boardString.replace(" ", "0");
 

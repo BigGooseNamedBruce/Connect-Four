@@ -17,7 +17,7 @@ public class Solver {
 
     private BitBoard board;
     private final int TRANSPOSITION_TABLE_SIZE = 536870909;
-    private final String FILEPATH = "src\\main\\resources\\opening_book.bin";
+    private final String FILEPATH = "src/main/resources/opening_book.bin";
     public TranspositionTable table;
     private int[] moveOrder = {3, 4, 2, 5, 1, 6, 0};
     private OpeningBook openingBook;
@@ -194,14 +194,13 @@ public class Solver {
         long next = moves.getNext();
 
         while(next != 0) {
-            BitBoard copyBoard = new BitBoard(board);
-            copyBoard.placeDisc(next, player);
+
+            board.placeDisc(next, player);
+            int score = -negamax(board, getOpponent(player), -beta, -alpha);
+            
+            board.removeDisc(next);
             next = moves.getNext();
 
-
-            int score = -negamax(copyBoard, getOpponent(player), -beta, -alpha);
-
-            
             if (score >= beta) {
                 table.put(key, (byte) (score + BitBoard.MAX_SCORE - 2 * BitBoard.MIN_SCORE + 2));
                 return score;
