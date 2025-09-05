@@ -1,0 +1,11 @@
+{
+    "name": "connect-four",
+    "scripts": {
+        "start": "concurrently \"npm run start-frontend\" \"npm run start-backend\"",
+        "start-frontend": "cd frontend && npm run dev",
+        "start-backend": "cd backend && mvn spring-boot:run"
+    },
+    "devDependencies": {
+        "concurrently": "^8.0.0"
+    }
+}
