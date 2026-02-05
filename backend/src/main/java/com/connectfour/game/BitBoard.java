@@ -1,7 +1,5 @@
 package com.connectfour.game;
 
-import java.util.Arrays;
-
 /**
  * This file contains all the methods related to the Connect Four board
  * 
@@ -416,6 +414,15 @@ public class BitBoard {
             columnMask[i] = ((1L << BOARD_HEIGHT) - 1) << (i * (BOARD_HEIGHT + 1));
         }
         return columnMask;
+    }
+    /**
+     * Given a move from MoveSorter, convert it to a column
+     * 
+     * @param move
+     * @return
+     */
+    public int moveColumn(long move) {
+        return Long.numberOfTrailingZeros(move) / 7;
     }
 
     /**

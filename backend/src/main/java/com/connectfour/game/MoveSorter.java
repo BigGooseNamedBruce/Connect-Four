@@ -32,6 +32,8 @@ public class MoveSorter {
         }
     }
 
+    
+
     @Override
     public String toString() {
         return String.format("Moves: %s\nScores: %s", Arrays.toString(moves), Arrays.toString(scores));
