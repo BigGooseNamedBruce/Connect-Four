@@ -1,3 +1,15 @@
+/* .board {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(7, 10vh);
+  grid-template-rows: repeat(6, 10vh);
+  gap: 3vh;
+  border: 5px solid #1d1c1c;
+  background-color: #008CBA;
+  padding: 2vh;
+  z-index: 500;
+} */
+
 body {
   font-family: Arial, sans-serif;
   display: flex;
@@ -7,16 +19,39 @@ body {
   margin: 0;
   background-color: #2d2d30;
 }
-.board {
+/* .board-background--holes {
+  pointer-events: none;  
+  z-index: 10000;
+  background-color: rgba(0, 136, 255, 0.7);
+  background-color: #008CBA;
+} */
+
+.board-container {
+  position: relative;
+}
+.board-grid {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(7, 10vh);
   grid-template-rows: repeat(6, 10vh);
   gap: 3vh;
+  padding: 2vh;
+  z-index: 0;
+}
+
+/* .board-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   border: 5px solid #1d1c1c;
   background-color: #008CBA;
-  padding: 2vh;
-}
+  z-index: 2;
+} */
+
 .cell {
+  position: relative;
   width: 10vh;
   height: 10vh;
   border-radius: 50%;
@@ -26,7 +61,41 @@ body {
   align-items: center;
   cursor: pointer;
   box-sizing: border-box;
+  z-index: 3; 
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
+.board-background {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #008CBA;
+  z-index: 2;
+}
+
+.board-background--holes {
+  /* Overlay clone with holes */
+  background-color: #008CBA;
+  pointer-events: none;
+  z-index: 10000;
+  
+}
+
+.disc {
+  position: absolute;
+  border-radius: 50%;
+  transition: top 1.0s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+/* .disc {
+  position: absolute;
+  width: 10vh;
+  height: 10vh;
+  border-radius: 50%;
+  box-sizing: border-box;
+  background-color: inherit;
+  transition: top 1.75s cubic-bezier(0.22, 1, 0.36, 1);
+  z-index: 2;
+  pointer-events: none;
+} */
 .cell.clicked {
   pointer-events: none;
 }
@@ -36,3 +105,4 @@ body {
 .yellow {
   background-color: yellow;
 }
+

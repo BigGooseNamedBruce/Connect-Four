@@ -11,6 +11,7 @@ function App() {
   const [player, setPlayer] = useState("red");
   const [isWinScreenOpen, setWinScreenOpen] = useState(true);
   const [winnerColour, setWinnerColour] = useState(null);
+  const [isScreenFrozen, setIsScreenFrozen] = useState(false);
 
 
   const fetchBoardData = () => {
@@ -61,6 +62,7 @@ function App() {
   useEffect(() => {
     reset();
     closeWinScreen();
+    setIsScreenFrozen(false);
   }, []);
 
 
@@ -68,7 +70,20 @@ function App() {
     fetchWinner();
   }, [board]);
 
+  useEffect(() => {
+    function handleClickOutside() {
+      if (isWinScreenOpen) {
+        setWinScreenOpen(false);
+        setIsScreenFrozen(true);
+      } 
+    }
 
+    document.addEventListener('click', handleClickOutside);
+
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [isWinScreenOpen]);
 
   return (
     <div>
@@ -77,6 +92,9 @@ function App() {
         setBoard={setBoard}
         player={player}
         setPlayer={setPlayer}
+        isScreenFrozen={isScreenFrozen}
+        isWinScreenOpen={isWinScreenOpen}
+        setIsScreenFrozen={setIsScreenFrozen}
       />
       <WinScreen isOpen={isWinScreenOpen} colour={winnerColour}/>
     </div>
