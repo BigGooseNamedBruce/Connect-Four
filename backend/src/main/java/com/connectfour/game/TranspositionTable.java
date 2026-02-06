@@ -12,85 +12,161 @@ import java.util.Arrays;
 
 public class TranspositionTable {
 
-    // Initializes instance variables
-    private int[] keys;
-    private byte[] values;
-    private int size;
+    private static final long EMPTY_KEY = Long.MIN_VALUE;
 
-    /**
-     * Parameterized constructor that will inialize a transposition table
-     * 
-     * @param size An int representing the length of the transposition table
-     */
-    public TranspositionTable(int size) {
-        this.keys = new int[size];
-        this.values = new byte[size];
-        this.size = size;
+    private final int capacity;
+    private final long[] keys;
+    private final byte[] values;
+    private final int[] prev;
+    private final int[] next;
+
+    private final int[] table;
+    private final int tableSize;
+
+    private int head = -1;
+    private int tail = -1;
+    private int size = 0;
+
+    public TranspositionTable(int capacity) {
+        this.capacity = capacity;
+        keys = new long[capacity];
+        values = new byte[capacity];
+        prev = new int[capacity];
+        next = new int[capacity];
+        Arrays.fill(keys, EMPTY_KEY);
+
+        tableSize = Integer.highestOneBit(capacity * 2 - 1) << 1;
+        table = new int[tableSize];
+        Arrays.fill(table, -1);
     }
 
-    /**
-     * 
-     * 
-     * @param key A long representing the position
-     * @param value A byte representing the position's score
-     */
+    public byte get(long key) {
+        int index = findIndex(key);
+        if (index == -1) return 0;
+
+        moveToFront(index);
+        return values[index];
+    }
+
     public synchronized void put(long key, byte value) {
-        put(truncate(key), value);
-    }
+        int index = findIndex(key);
+        if (index != -1) {
+            values[index] = value;
+            moveToFront(index);
+            return;
+        }
 
-    /**
-     * Puts a key-pair value into the transposition table. If a key hashes 
-     * to a spot that is already filled, the new key-pair value will replace 
-     * the old key-pair value
-     * 
-     * @param key A int representing the position
-     * @param value A byte representing the position's score
-     */
-    public synchronized void put(int key, byte value) {
-        int index = index(key);
+        // Need to insert new
+        if (size < capacity) {
+            index = size++;
+        } else {
+            // Evict least recently used
+            index = tail;
+            removeFromHash(keys[index]);
+            removeFromList(index);
+        }
+
         keys[index] = key;
         values[index] = value;
+        insertIntoHash(key, index);
+        insertAtFront(index);
     }
 
-    /**
-     * Gets the value associated with the given key
-     * 
-     * @param key A long representing the position
-     * @return A byte representing the position's score
-     */
-    public byte get(long key) {
-        int index = index(key);
-        if (keys[index] == (int)key) {
-            return values[index];
+    private int hash(long key) {
+        key ^= (key >>> 33);
+        key *= 0xff51afd7ed558ccdL;
+        key ^= (key >>> 33);
+        key *= 0xc4ceb9fe1a85ec53L;
+        key ^= (key >>> 33);
+        return (int) key & (tableSize - 1);
+    }
+
+    private void insertIntoHash(long key, int index) {
+        int i = hash(key);
+        while (table[i] != -1) {
+            i = (i + 1) & (tableSize - 1);
         }
-        return 0;
+        table[i] = index;
     }
 
-    /**
-     * 
-     * @param key A long representing a position
-     * @return An int representing the position the index in key and valeue array
-     */
-    private int index(long key) {
-        return truncate(key) % size;
+    private void removeFromHash(long key) {
+        int i = hash(key);
+        while (true) {
+            int idx = table[i];
+            if (idx == -1) return;
+
+            if (keys[idx] == key) {
+                table[i] = -1;
+
+                int j = (i + 1) & (tableSize - 1);
+                while (table[j] != -1) {
+                    int rehashIdx = table[j];
+                    table[j] = -1;
+                    insertIntoHash(keys[rehashIdx], rehashIdx);
+                    j = (j + 1) & (tableSize - 1);
+                }
+
+                return;
+            }
+
+            i = (i + 1) & (tableSize - 1);
+        }
     }
 
-    /**
-     * A hash function that will return the index a key-pair value will be stored at
-     * 
-     * @param key A int representing a position
-     * @return An int representing the position the index in key and valeue array
-     */
-    private int index(int key) {
-        return key % size;
+    private int findIndex(long key) {
+        int i = hash(key);
+        while (true) {
+            int idx = table[i];
+            if (idx == -1) return -1;
+            if (keys[idx] == key) return idx;
+            i = (i + 1) & (tableSize - 1);
+        }
     }
 
-    public int truncate(long key) {
-        return (int) (key << 32);
+
+    private void moveToFront(int index) {
+        if (index == head) return;
+        removeFromList(index);
+        insertAtFront(index);
+    }
+
+    private void insertAtFront(int index) {
+        prev[index] = -1;
+        next[index] = head;
+
+        if (head != -1) prev[head] = index;
+        head = index;
+
+        if (tail == -1) tail = index;
+    }
+
+    private void removeFromList(int index) {
+        int p = prev[index];
+        int n = next[index];
+
+        if (p != -1) next[p] = n;
+        else head = n;
+
+        if (n != -1) prev[n] = p;
+        else tail = p;
+
+        prev[index] = -1;
+        next[index] = -1;
+        
     }
 
     @Override
     public String toString() {
-        return Arrays.toString(keys) + "\n" + Arrays.toString(values);
+        String tableString = "";
+        int curr = head;
+        while (curr != -1) {
+            tableString += ("[" + keys[curr] + " → " + values[curr] + "] ");
+            curr = next[curr];
+        }
+        return tableString;
     }
+
+
+
+
 }
