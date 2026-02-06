@@ -4,11 +4,13 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.connectfour.services.ConnectFourService;
 import com.connectfour.models.MoveRequest;
 import com.connectfour.models.PlayerRequest;
+import com.connectfour.dto.ConnectFourResponse;
 
 
 @RestController
@@ -27,15 +29,14 @@ public class ConnectFourController {
         return connectfourService.checkWinner();
     }
 
-    // Make a move for a player
     @PostMapping("/move")
-    public String[][] makeMove(@RequestBody MoveRequest moveRequest) {
-        //System.out.println("Received move: " + moveRequest);
+    @ResponseBody
+    public ConnectFourResponse makeMove(@RequestBody MoveRequest moveRequest) {
         connectfourService.place(moveRequest.getColumn(), moveRequest.getPlayer());
-        return connectfourService.toArray();
-        //return connectfourService.playerMove(moveRequest.getColumn(), moveRequest.getPlayer());
+        String[][] board = connectfourService.toArray();
+        int col = moveRequest.getColumn();
+        return new ConnectFourResponse(board, col);
     }
-    
 
     @PostMapping("/reset")
     public void reset() {
@@ -43,9 +44,10 @@ public class ConnectFourController {
     }
 
     @PostMapping("/compute")
-    public String[][] computeBestMove(@RequestBody PlayerRequest playerRequest) {
+    public ConnectFourResponse computeBestMove(@RequestBody PlayerRequest playerRequest) {
         int bestMove = connectfourService.computerBestMove(playerRequest.getPlayer());
         connectfourService.place(bestMove, playerRequest.getPlayer());
-        return connectfourService.toArray();
+        String[][] board = connectfourService.toArray();
+        return new ConnectFourResponse(board, bestMove);
     }
 }
