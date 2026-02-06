@@ -1,4 +1,4 @@
-package com.connectfour;
+package com.connectfour.game;
 
 import com.connectfour.game.*;
 
