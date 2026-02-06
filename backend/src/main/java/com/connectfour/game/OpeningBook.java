@@ -5,16 +5,16 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.file.Paths;
-import java.util.HashMap;
+import it.unimi.dsi.fastutil.longs.Long2ByteOpenHashMap;
 
 public class OpeningBook {
 
     private String filepath;
-    private HashMap<Long, Byte> map;
+    Long2ByteOpenHashMap map;
 
     public OpeningBook(String filepath) {
         this.filepath = Paths.get(filepath).toString();
-        this.map = new HashMap<>();
+        this.map = new Long2ByteOpenHashMap();
     }
 
     public void load() {
