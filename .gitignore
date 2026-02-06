@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Directories
+backend/target/
+backend/.vscode
+frontend/node_modules/
