@@ -17,6 +17,7 @@ public class BitBoard {
     private static final long BOTTOM_MASK = bottomMask();
     private static final long BOARD_MASK = BOTTOM_MASK * ((1L << BOARD_HEIGHT) - 1);
     private static final long[] COLUMN_MASK = generateColumnMask();
+    private static final long[] BOTTOM_MASK_COLUMN = generateBottomMaskColumn();
 
     // Initializing the instance variables
     private long playerBoard;
@@ -44,12 +45,6 @@ public class BitBoard {
         this.spacesLeft = bitBoard.spacesLeft;
     }
 
-    public BitBoard placeAndClone(BitBoard board, long next, char player) {
-        BitBoard copyBoard = new BitBoard(board);
-        copyBoard.placeDisc(next, player);
-        return new BitBoard(copyBoard);
-    }
-
     /**
      * This method resets the board to its default settings
      * 
@@ -61,16 +56,7 @@ public class BitBoard {
         spacesLeft = BOARD_HEIGHT * BOARD_WIDTH;
     }
 
-    /**
-     * This method checks if a column if full or not. It will
-     * return true if it is full and false if it isn't
-     * 
-     * @param col An int representing the column being checked
-     * @return A boolean determining if the column if full
-     */
-    public boolean isColumnFull(int col) {
-        return (mask & topMaskColumn(col)) != 0;
-    }
+
     
     /**
      * Given a column and a player, this method will place a disc in that column for the given player
@@ -80,7 +66,7 @@ public class BitBoard {
      */
     public void placeDisc(int col, char player) {
         // Calculates the cell the disc will be placed at for the other placeDisc() method
-        placeDisc(mask + bottomMaskColumn(col), player);
+        placeDisc(mask + BOTTOM_MASK_COLUMN[col], player);
     }
 
     /**
@@ -112,35 +98,11 @@ public class BitBoard {
      * @param col An int representing the column that the disc will be removed from
      */
     public void removeDisc(int col) {
-
-        // Calculates the binary representation of the piece that is going to be removed
-        // long removedPiece = columnMask(col) & mask;
-        // removedPiece = ~(removedPiece) & ((removedPiece << 1) ^ removedPiece);
-        // removedPiece = removedPiece >> 1;
-
-        long removedPiece = columnMask(col) & mask;
-        removedPiece = (~removedPiece >> 1) & removedPiece;
-        // Removes the piece from the mask
-        mask = mask ^ removedPiece;
-
-        // Removes the piece from the player or opponent board
-        if ((removedPiece & playerBoard) != 0) {
-            playerBoard = mask ^ opponentBoard;
-        } else {
-            opponentBoard = mask ^ playerBoard;
-        }
-
-        // Adds a space to the total amount of spots left since a piece has been removed 
-        spacesLeft++;
-        
+        long move = ~((COLUMN_MASK[col] & mask) >> 1) & (COLUMN_MASK[col] & mask);
+        removeDisc(move);
     }
 
     public void removeDisc(long move) {
-
-        // Calculates the binary representation of the piece that is going to be removed
-        // long removedPiece = columnMask(col) & mask;
-        // removedPiece = ~(removedPiece) & ((removedPiece << 1) ^ removedPiece);
-        // removedPiece = removedPiece >> 1;
 
         mask = mask ^ move;
 
@@ -152,9 +114,20 @@ public class BitBoard {
         }
 
         // Adds a space to the total amount of spots left since a piece has been removed 
-        spacesLeft++;
-        
+        spacesLeft++;   
     }
+
+    /**
+     * This method checks if a column if full or not. It will
+     * return true if it is full and false if it isn't
+     * 
+     * @param col An int representing the column being checked
+     * @return A boolean determining if the column if full
+     */
+    public boolean isColumnFull(int col) {
+        return (mask & topMaskColumn(col)) != 0;
+    }
+
 
     /**
      * Given a player, this wrapper method will check if that player has won or not
@@ -171,7 +144,190 @@ public class BitBoard {
             return checkWinner(opponentBoard);
         }
     }
+
     /**
+     * Checks if a player can win within the next move
+     * 
+     * @param player A char representing the player
+     * @return A boolean determining if the given player can win within the next move
+     */
+    public boolean canWinNext(char player) {
+        return (winningPosition(player) & possible()) != 0;
+    }
+
+    public long possibleNonLosingMoves(char player) {
+
+        long possibleMask = possible();
+        long opponentWin;
+        if (player == 'r') {
+            opponentWin = winningPosition('y');
+        } else {
+            opponentWin = winningPosition('r');
+        }
+        long forcedMoves = possibleMask & opponentWin;
+        if (forcedMoves != 0) {
+            if ((forcedMoves & (forcedMoves - 1)) != 0) {
+                return 0;
+            } else {
+                possibleMask = forcedMoves;
+            }
+        }
+
+        return possibleMask & ~(opponentWin >> 1);
+    }
+
+
+
+    public int moveScore(long move, char player) {
+        if (player == 'r') {
+            return Long.bitCount(computeWinningPosition(playerBoard | move));
+        } else {
+            return Long.bitCount(computeWinningPosition(opponentBoard | move));
+        }
+    }
+    
+
+    /**
+     * Generates a unique key for any Connect Four position
+     * 
+     * @return A long representing a unique key for a given position
+     */
+    public long key() {
+        return playerBoard + BOTTOM_MASK + mask;
+    }
+
+    /**
+     * Given a move from MoveSorter, convert it to a column
+     * 
+     * @param move
+     * @return
+     */
+    public int moveColumn(long move) {
+        //return Long.numberOfTrailingZeros(mask ^ (move | mask)) / BOARD_WIDTH;
+
+        return Long.numberOfTrailingZeros(move) / 7;
+    }
+
+
+
+    public char load(String position) {
+        char player = 'r';
+        
+        for (int i = 0; i < position.length(); i++) {
+            //System.out.println(s.charAt(i));
+            placeDisc(Character.getNumericValue(position.charAt(i) - 1), player);
+            player = (player == 'r') ? 'y': 'r';
+        }
+        return player;
+    }
+
+
+
+        public String[][] toArray() {
+
+        // Initializes a string of the binary representations of the player and opponent board
+        String playerBoardString = boardToBinaryString(playerBoard);
+        String opponentBoardString = boardToBinaryString(opponentBoard);
+
+        String[][] boardArray = new String[6][7];
+        //System.out.println(Arrays.toString(boardArray));
+
+        // Iterates vertically over the board
+        for (int row = 1; row < BOARD_HEIGHT + 1; row++) {
+            // Iterates horizontally
+            for (int col = BOARD_WIDTH - 1; col > -1; col--) {
+
+                if (playerBoardString.charAt(row + BOARD_WIDTH * col) == '1') {
+                    boardArray[row - 1][BOARD_WIDTH - 1 - col] = "red";
+                } else if (opponentBoardString.charAt(row + BOARD_WIDTH * col) == '1') {
+                    boardArray[row - 1][BOARD_WIDTH - 1 - col] = "yellow";
+                } else {
+                    boardArray[row - 1][BOARD_WIDTH - 1 - col] = null;
+                }
+            }
+        }
+
+        return boardArray;
+    }
+
+
+    
+    /**
+     * Returns a visual representation of the Connect Four board
+     * 
+     * @return A string of the Connect Four Board
+     */
+    @Override
+    public String toString() {
+        
+        // Initializes a string of the binary representations of the player and opponent board
+        String playerBoardString = boardToBinaryString(playerBoard);
+        String opponentBoardString = boardToBinaryString(opponentBoard);
+        String boardString = "-----------------------------\n";
+
+        // Iterates vertically over the board
+        for (int row = 1; row < BOARD_HEIGHT + 1; row++) {
+            boardString += "|";
+            // Iterates horizontally
+            for (int col = BOARD_WIDTH - 1; col > -1; col--) {
+                if (playerBoardString.charAt(row + BOARD_WIDTH * col) == '1') {
+                    boardString += " X |";
+                } else if (opponentBoardString.charAt(row + BOARD_WIDTH * col) == '1') {
+                    boardString += " O |";
+                } else {
+                    boardString += "   |";
+                }
+            }
+
+            boardString += "\n-----------------------------\n";
+        }
+
+        return boardString;
+    }
+
+
+
+
+    /**
+     * Converts a board position to a binary string
+     * 
+     * @param board A long representing a board
+     * @return A binary string of the board
+     */
+    public static String boardToBinaryString(long board) {
+        String boardString = String.format("%49s", Long.toBinaryString(board));
+        boardString = boardString.replace(" ", "0");
+
+        return boardString;
+    }
+
+
+
+
+
+
+
+    /**
+     * Gets a bitmap of all the possible playable moves 
+     * 
+     * @return A bitmap of all the possible playable moves 
+     */
+    private long possible() {
+        return (mask + BOTTOM_MASK) & BOARD_MASK;
+    }
+
+
+    private long winningPosition(char player) {
+
+        if (player == 'r') {
+            return computeWinningPosition(playerBoard);
+        } else {
+            return computeWinningPosition(opponentBoard);
+        }
+    } 
+
+
+        /**
      * Given a board, this helper method will determine if that board contains a connect four
      * 
      * @param board A long representing a player board
@@ -206,54 +362,6 @@ public class BitBoard {
         return false;
     }
 
-    /**
-     * Checks if a player can win within the next move
-     * 
-     * @param player A char representing the player
-     * @return A boolean determining if the given player can win within the next move
-     */
-    public boolean canWinNext(char player) {
-        return (winningPosition(player) & possible()) != 0;
-    }
-
-    public long possibleNonLosingMoves(char player) {
-
-        long possibleMask = possible();
-        long opponentWin;
-        if (player == 'r') {
-            opponentWin = winningPosition('y');
-        } else {
-            opponentWin = winningPosition('r');
-        }
-        long forcedMoves = possibleMask & opponentWin;
-        if (forcedMoves != 0) {
-            if ((forcedMoves & (forcedMoves - 1)) != 0) {
-                return 0;
-            } else {
-                possibleMask = forcedMoves;
-            }
-        }
-
-        return possibleMask & ~(opponentWin >> 1);
-    }
-
-    private long winningPosition(char player) {
-
-        if (player == 'r') {
-            return computeWinningPosition(playerBoard);
-        } else {
-            return computeWinningPosition(opponentBoard);
-        }
-    } 
-
-    /**
-     * Gets a bitmap of all the possible playable moves 
-     * 
-     * @return A bitmap of all the possible playable moves 
-     */
-    public long possible() {
-        return (mask + BOTTOM_MASK) & BOARD_MASK;
-    }
 
     /**
      * Calculates a bitmap of all the possible connect fours within the next move
@@ -297,32 +405,8 @@ public class BitBoard {
 
     }
 
-    public int moveScore(long move, char player) {
-        if (player == 'r') {
-            return popcount(computeWinningPosition(playerBoard | move));
-        } else {
-            return popcount(computeWinningPosition(opponentBoard | move));
-        }
-    }
 
-    /**
-     * Counts the number of bits in the binary representation of the board
-     * 
-     * @param board A long representing the amount of 1s needed to be counted
-     * @return An int representing the amount of bits there are 1
-     */
-    private static int popcount(long board) {
-        int bits;
-        for (bits = 0; board != 0; bits++) {
-            board &= board - 1;
-        }
 
-        return bits;
-    }
-
-    public static int popcount(BitBoard board) {
-        return BitBoard.popcount(board.mask);
-    }
 
     /**
      * Checks if the game has become a draw
@@ -355,39 +439,7 @@ public class BitBoard {
     }
 
 
-    public void setSpacesLeft(int spacesLeft) {
-        this.spacesLeft = spacesLeft;
-    }
-
-    public void setMask(long mask) {
-        this.mask = mask;
-    }
-
-    public void setPlayerBoard(long playerBoard) {
-        this.playerBoard = playerBoard;
-        //this.mask = this.playerBoard | this.opponentBoard;
-    }
-
-    public void setOpponentBoard(long opponentBoard) {
-        this.opponentBoard = opponentBoard;
-        //this.mask = this.playerBoard | this.opponentBoard;
-    }
-
-    /**
-     * Generates a unique key for any Connect Four position
-     * 
-     * @return A long representing a unique key for a given position
-     */
-    public long key() {
-
-        long bottom = bottomMask();
-        // for (int col = 0; col < BOARD_WIDTH; col++) {
-        //     bottom += bottomMaskColumn(col);
-        // }
-
-        return playerBoard + bottom + mask;
-    }
-
+    
     /**
      * Generates a mask for the entire given column For example, the following 
      * would be the column mask for column 3 and for a 7x6 Connect Four board
@@ -414,15 +466,6 @@ public class BitBoard {
             columnMask[i] = ((1L << BOARD_HEIGHT) - 1) << (i * (BOARD_HEIGHT + 1));
         }
         return columnMask;
-    }
-    /**
-     * Given a move from MoveSorter, convert it to a column
-     * 
-     * @param move
-     * @return
-     */
-    public int moveColumn(long move) {
-        return Long.numberOfTrailingZeros(move) / 7;
     }
 
     /**
@@ -485,91 +528,12 @@ public class BitBoard {
         return 1L << (col * (BOARD_HEIGHT + 1));
     }
 
-    /**
-     * Converts a board position to a binary string
-     * 
-     * @param board A long representing a board
-     * @return A binary string of the board
-     */
-    public static String boardToBinaryString(long board) {
-        String boardString = String.format("%49s", Long.toBinaryString(board));
-        boardString = boardString.replace(" ", "0");
-
-        return boardString;
-    }
-
-
-
-    public String[][] toArray() {
-
-        // Initializes a string of the binary representations of the player and opponent board
-        String playerBoardString = boardToBinaryString(playerBoard);
-        String opponentBoardString = boardToBinaryString(opponentBoard);
-
-        String[][] boardArray = new String[6][7];
-        //System.out.println(Arrays.toString(boardArray));
-
-        // Iterates vertically over the board
-        for (int row = 1; row < BOARD_HEIGHT + 1; row++) {
-            // Iterates horizontally
-            for (int col = BOARD_WIDTH - 1; col > -1; col--) {
-
-                if (playerBoardString.charAt(row + BOARD_WIDTH * col) == '1') {
-                    boardArray[row - 1][BOARD_WIDTH - 1 - col] = "red";
-                } else if (opponentBoardString.charAt(row + BOARD_WIDTH * col) == '1') {
-                    boardArray[row - 1][BOARD_WIDTH - 1 - col] = "yellow";
-                } else {
-                    boardArray[row - 1][BOARD_WIDTH - 1 - col] = null;
-                }
-            }
+    private static long[] generateBottomMaskColumn() {
+        long[] bottomMaskColumn = new long[BOARD_WIDTH];
+        for (int col = 0; col < BOARD_WIDTH; col++) {
+            bottomMaskColumn[col] = 1L << (col * (BOARD_HEIGHT + 1));
         }
-
-        return boardArray;
-    }
-
-    public char load(String position) {
-        char player = 'r';
-        
-        for (int i = 0; i < position.length(); i++) {
-            //System.out.println(s.charAt(i));
-            placeDisc(Character.getNumericValue(position.charAt(i) - 1), player);
-            player = (player == 'r') ? 'y': 'r';
-        }
-        return player;
-    }
-
-    
-    /**
-     * Returns a visual representation of the Connect Four board
-     * 
-     * @return A string of the Connect Four Board
-     */
-    @Override
-    public String toString() {
-        
-        // Initializes a string of the binary representations of the player and opponent board
-        String playerBoardString = boardToBinaryString(playerBoard);
-        String opponentBoardString = boardToBinaryString(opponentBoard);
-        String boardString = "-----------------------------\n";
-
-        // Iterates vertically over the board
-        for (int row = 1; row < BOARD_HEIGHT + 1; row++) {
-            boardString += "|";
-            // Iterates horizontally
-            for (int col = BOARD_WIDTH - 1; col > -1; col--) {
-                if (playerBoardString.charAt(row + BOARD_WIDTH * col) == '1') {
-                    boardString += " X |";
-                } else if (opponentBoardString.charAt(row + BOARD_WIDTH * col) == '1') {
-                    boardString += " O |";
-                } else {
-                    boardString += "   |";
-                }
-            }
-
-            boardString += "\n-----------------------------\n";
-        }
-
-        return boardString;
+        return bottomMaskColumn;
     }
 
 }
