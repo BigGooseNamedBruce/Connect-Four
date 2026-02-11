@@ -6,144 +6,165 @@ Given a file containing positions, this file will scrape the scores from https:/
 
 import asyncio
 import os
-from playwright.async_api import async_playwright, TimeoutError
+import asyncio
+import aiohttp
+import os
+from playwright.sync_api import sync_playwright
+from bitboard import Bitboard
+from binary_file import read_binary_file, write_binary_file
 
+MOVE_LENGTH = 8
+COMPUTED_POSITIONS_FILENAME = f"../data/opening_book_{MOVE_LENGTH}_moves_positions.bin"#"../../backend/src/main/resources/opening_book.bin"
+VALID_POSITIONS_FILENAME = f"../data/moves_{MOVE_LENGTH}.txt"
 
+# Initializes the paths for the filenames this file will read from
+CURRENT_PATH = os.path.dirname(__file__)
+COMPUTED_POSITIONS_FILEPATH = os.path.join(CURRENT_PATH, COMPUTED_POSITIONS_FILENAME)
+VALID_POSITIONS_FILEPATH = os.path.join(CURRENT_PATH, VALID_POSITIONS_FILENAME)
 
-COMPUTED_POSITIONS_PATH = "../../backend/src/main/resources/opening_book.bin"
-VALID_POSITIONS_PATH = "../data/moves.txt"
-TIMEOUT = 5000
-RETRIES = 5
-BATCH_SIZE = 35
-SEMAPHORES_COUNT = 60
+SEMAPHORES_COUNT = 10      # how many requests in flight at once
+TOTAL_CONNECTION_LIMIT = 20    # total open connections
+PER_HOST_LIMIT = 20      # connections per host
+REQUEST_TIMEOUT = 180     # seconds
+MAX_RETRIES = 4
+BASE_BACKOFF = 0.5  # seconds
 
-file_lock = asyncio.Lock()
+HEADERS = {"Accept": "application/json"}
+URL = "https://connect4.gamesolver.org/solve"
+
 semaphore = asyncio.Semaphore(SEMAPHORES_COUNT)
+file_lock = asyncio.Lock()
 
 
 
-def load_computed_positions(filename):
 
-    computed_positions = set()
+def load_computed_positions(filepath):
+    """This function returns a set of all the positions whose scores have already been scraped"""
 
-    try:
-        with open(filename, "rb") as file:
-            while True:
-                key_bytes = file.read(4)
-                if not key_bytes or len(key_bytes) < 4:
-                    break  # End of file
+    # There are no already computed positions
+    if not os.path.exists(filepath):
+        return {}
 
-                value_bytes = file.read(2)
-                if not value_bytes or len(value_bytes) < 2:
-                    break  # Unexpected EOF
-
-                position = int.from_bytes(key_bytes, byteorder='big')
-                score = int.from_bytes(value_bytes, byteorder='big', signed=True)
-                computed_positions.add(str(position))
-
-    except FileNotFoundError as e:
-        print(f"Ignoring {e}")
-
+    computed_positions = read_binary_file(filepath, key_size=4, value_size=1)
+    computed_positions = {str(k): v for k, v in computed_positions.items()}
     return computed_positions
 
 
-def load_positions(filename, computed_positions=set()):
-    with open(filename, "r") as file:
-        return [line.strip() for line in file if line.strip() not in computed_positions]
+def load_positions(filepath, computed_positions={}):
+    "This function will return a list of all valid positions whose scores have not been scraped yet"
+    positions = []
 
-
-async def scrap_score(context, position):
-
-    link = f"https://connect4.gamesolver.org/?pos={position}"
-    page = await context.new_page()
-
-    for tries in range(RETRIES):
-        try:
-            await page.goto(link, timeout=TIMEOUT)
-
-            for i in range(7):
-                await page.wait_for_selector(f'#sol{i}', timeout=TIMEOUT)
-            
-            for i in range(7):
-                
-                await page.locator(f"#sol{i}").wait_for(state="visible", timeout=TIMEOUT)
-
-            
-
-            scores = []
-            for i in range(7):
-                
-                element_by_id = page.locator(f'#sol{i}')
-                try:
-                    value = int(await element_by_id.inner_text())
-                    scores.append(value)
-                except ValueError:
-                    pass
-            
-            await page.close()
-            return max(scores) if scores else None
-        except TimeoutError:
-            pass
-
-        except Exception as e:
-            #print(f"Attempt {attempt+1}/{retries} failed for position {position}: {e}")
-            # Randomized sleep before retrying to avoid hitting the rate limit
-            # await asyncio.sleep(random.uniform(2, 5))  # Randomized sleep between 2-5 seconds
-            # attempt += 1
-            # if attempt == retries:
-            #     print(f"Failed to scrape position {position} after {retries} attempts.")
-            #     await page.close()
-            #     return None
-            print(f"{position} had an error: {e}")
+    with open(filepath, "r") as file:
+        for line in file:
+            position = line.strip()
+            if position not in computed_positions:
+                positions.append(position)
         
+    return positions
 
-
-
-async def write_binary_file(filename, position, score):
+async def write(filename, position, score):
     async with file_lock:
         print(f"Writing {position} {score}")
-        with open(filename, "ab") as file:
-
-            key = position.to_bytes(4, byteorder='big')
-            value = score.to_bytes(2, byteorder='big', signed=True)
-
-            file.write(key)
-            file.write(value)
+        write_binary_file(filename, position, score, key_size=4, value_size=1)
 
 
+async def call_api(session, position, board, keys):
 
-async def scrape(context, position, filepath):
-    async with semaphore:
-        score = await scrap_score(context, position)
-        if score is not None:
-            await write_binary_file(filepath, int(position), score)
-            pass
+    board.load(position)
+    key = board.key()
+    board.clear()
+
+    params = {"pos": position}
+
+    for attempt in range(1, MAX_RETRIES + 1):
+        # Doesn't need to call the api since the score has already been found
+        if key in keys:
+            return position, keys[key]
+        
+        try:
+            async with semaphore:
+                async with session.get(URL, params=params) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        return position, data
+                    # Server timed out
+                    if resp.status == 524:
+                        # exponential backoff
+                        delay = BASE_BACKOFF * (2 ** (attempt - 1))
+                        await asyncio.sleep(delay)
+                        continue
+                    else:
+                        return position, f"Error {resp.status}"
+
+        except Exception as e:
+            return position, str(e)
+
+
+async def process_all_positions(session, valid_positions, board, keys):
+    tasks = [call_api(session, p, board, keys) for p in valid_positions]
+
+    for coro in asyncio.as_completed(tasks):
+        position, score = await coro
+
+        # Score was found in the dictionary of already computed keys
+        if isinstance(score, int):
+            try:
+                await write(COMPUTED_POSITIONS_FILEPATH, int(position), score)
+            except Exception as e:
+                print(f"Error processing result for {position}: {e}")
+
+        # Score was found through the API
+        elif isinstance(score, dict) and "score" in score:
+            try:
+                best_score = max(x for x in score["score"] if x < 50)
+                # Adds score to the dictionary of computed keys
+                board.load(position)
+                key = board.key()
+                board.clear()
+                keys[key] = best_score
+
+                await write(COMPUTED_POSITIONS_FILEPATH, int(position), best_score)
+            except Exception as e:
+                print(f"Error processing result for {position}: {e}")
+        else:
+            print(f"API error for {position}: {score}")
 
 
 async def main():
+    print("Staring program")
 
-    current_path = os.path.dirname(__file__)
-    computed_positions_path = os.path.join(current_path, COMPUTED_POSITIONS_PATH)
-    valid_positions_path = os.path.join(current_path, VALID_POSITIONS_PATH)
-    
-    computed_positions = load_computed_positions(computed_positions_path)
-    valid_positions = load_positions(valid_positions_path, computed_positions)
+    # Gets list of all valid positions and removes all positions that have already been scraped
+    computed_positions = load_computed_positions(COMPUTED_POSITIONS_FILEPATH)
+    valid_positions = load_positions(VALID_POSITIONS_FILEPATH, computed_positions)
 
-    async with async_playwright() as p:
-        # Launch the browser and create a single page
-        browser = await p.chromium.launch(headless=True)
-        context = await browser.new_context()
+    print(f"Finish loading valid positions. {len(valid_positions)} positions to go")
 
-        # Process positions in batches to avoid memory overload
-        batch_size = BATCH_SIZE
-        for i in range(0, len(valid_positions), batch_size):
-            batch = valid_positions[i:i + batch_size]
-            # Run the workers for this batch concurrently
-            await asyncio.gather(*[scrape(context, position, computed_positions_path) for position in batch])
+    board = Bitboard()
+    keys = {}
 
-        await browser.close()
+    # Calculate
+    for position, score in computed_positions.items():
+        position = str(position)
+        board.load(position)
+        keys[board.key()] = score
+        board.clear()
 
+    print("Finish loading keys")
 
+    timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
+
+    connector = aiohttp.TCPConnector(
+        limit=TOTAL_CONNECTION_LIMIT,
+        limit_per_host=PER_HOST_LIMIT,
+        ttl_dns_cache=300,
+    )
+
+    async with aiohttp.ClientSession(
+        connector=connector,
+        timeout=timeout,
+        headers=HEADERS,
+    ) as session:
+        await process_all_positions(session, valid_positions, board, keys)
 
 
 if __name__ == "__main__":
