@@ -27,3 +27,5 @@ dist-ssr
 backend/target/
 backend/.vscode
 frontend/node_modules/
+scripts/data/
+scripts/python/__pycache__/
