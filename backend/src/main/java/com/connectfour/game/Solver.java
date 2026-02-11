@@ -1,5 +1,7 @@
 package com.connectfour.game;
 
+import com.connectfour.game.OpeningBook.BookType;
+
 /**
  * This file contains all the methods related to the Connect Four solver
  * 
@@ -7,11 +9,12 @@ package com.connectfour.game;
  * 
  */
 
+
 public class Solver {
 
     private BitBoard board;
     private final int TRANSPOSITION_TABLE_SIZE = (int)Math.pow(2, 23) + 9;
-    private final String FILEPATH = "src/main/resources/opening_book.bin";
+    private final BookType BOOK = BookType.EIGHT_MOVES_DEBUG;
     public TranspositionTable table;
     private int[] moveOrder = {3, 4, 2, 5, 1, 6, 0};
     private OpeningBook openingBook;
@@ -19,8 +22,7 @@ public class Solver {
     public Solver(BitBoard board) {
         this.board = board;
         this.table = new TranspositionTable(TRANSPOSITION_TABLE_SIZE);
-        this.openingBook = new OpeningBook(FILEPATH);
-        this.openingBook.load();
+        this.openingBook = new OpeningBook(BOOK);
     }
 
     /**
@@ -59,28 +61,27 @@ public class Solver {
             }
         }
 
-        long move = moves.getNext();
-        int count = 0;
+        long next = moves.getNext();
 
         // Edge case when the only non-losing move is the first column
-        if (move == 0) {
+        if (next == 0) {
             return 0;
         }
+        
+        for (int count = 0; count < 5; count++) {
 
-        while (move != 0 && count <= 5) {
-            BitBoard tempBoard = new BitBoard(board);
-            tempBoard.placeDisc(move, player);
-            int col = board.moveColumn(tempBoard.getMask() ^ board.getMask());
+            board.placeDisc(next, player);
+            int col = board.moveColumn(next);
 
-            int score = -solve(tempBoard, getOpponent(player));
+            int score = -solve(board, getOpponent(player));
+            board.removeDisc(next);
 
             if (score > bestScore) {
                 bestScore = score;
                 bestMove = col;
             }
 
-            move = moves.getNext();
-            count++;
+            next = moves.getNext();
         }
 
         return bestMove;
@@ -94,34 +95,38 @@ public class Solver {
         } else if (board.canWinNext(player)) {
             return (board.getSpacesLeft() + 1) / 2;
         }
-
-        int popcount = BitBoard.popcount(board);
-        long key = board.key();
-        if (popcount <= 6) {
-            if (openingBook.contains(key)) {
+        
+        if (BitBoard.BOARD_HEIGHT * BitBoard.BOARD_WIDTH - board.getSpacesLeft() <= BOOK.getMoveLength()) {
+            
+            long key = board.key();
+            int score = openingBook.get(key);
+            if (score != Byte.MIN_VALUE) {
                 return openingBook.get(key);
             }
         }
 
-        int min = -board.getSpacesLeft() / 2;
-        int max = (board.getSpacesLeft() + 1) / 2;
+        int low = -board.getSpacesLeft() / 2;
+        int high = (board.getSpacesLeft() + 1) / 2;
         
-        while (min < max) {
-            int med = min + (max - min) / 2;
-            if (med <= 0 && min / 2 < med) {
-                med = min / 2;
-            } else if (med >= 0 && max / 2 > med) {
-                med = max / 2;
+        while (low < high) {
+            int mid = low + (high - low) / 2;
+
+            if (mid <= 0 && low / 2 < mid) {
+                mid = low / 2;
+            } else if (mid >= 0 && high / 2 > mid) {
+                mid = high / 2;
             }
-            int r = negamax(board, player, med, med + 1);
-            if (r <= med) {
-                max = r;
+
+            int score = negamax(board, player, mid, mid + 1);
+
+            if (score <= mid) {
+                high = score;
             } else {
-                min = r;
+                low = score;
             }
         }
 
-        return min;
+        return low;
     }
 
     /**
@@ -176,13 +181,13 @@ public class Solver {
                     }
                 }
             } else {
-              max = value + BitBoard.MIN_SCORE - 1;
-              if (beta > max) {
-                beta = max;
-                if (alpha >= beta) {
-                    return beta;
-                }
-              }  
+                max = value + BitBoard.MIN_SCORE - 1;
+                if (beta > max) {
+                    beta = max;
+                    if (alpha >= beta) {
+                        return beta;
+                    }
+                }  
             }
         }
 
@@ -218,12 +223,6 @@ public class Solver {
         return alpha;
     }
 
-    public void loadPosition(String position, char player) {
-        for (int i = 0; i < position.length(); i++) {
-            board.placeDisc(Character.getNumericValue(position.charAt(i) - 1), player);
-            player = getOpponent(player);
-        }
-    }
 
     public char getOpponent(char player) {
         if (player == 'r') {
