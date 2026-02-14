@@ -9,25 +9,28 @@ package com.connectfour.game;
 
 public class BitBoard {
     
-    // Initalizing constants
+    // Board constants
     public static final int BOARD_HEIGHT = 6;
     public static final int BOARD_WIDTH = 7;
+
+    // Scoring constans for the solver
     public static final int MIN_SCORE = -(BOARD_WIDTH * BOARD_HEIGHT) / 2 + 3;
     public static final int MAX_SCORE = (BOARD_WIDTH * BOARD_HEIGHT + 1) / 2 - 3;
+
+    // Bitmasks for board bitwise operations
     private static final long BOTTOM_MASK = bottomMask();
     private static final long BOARD_MASK = BOTTOM_MASK * ((1L << BOARD_HEIGHT) - 1);
     private static final long[] COLUMN_MASK = generateColumnMask();
     private static final long[] BOTTOM_MASK_COLUMN = generateBottomMaskColumn();
 
-    // Initializing the instance variables
-    private long playerBoard;
-    private long opponentBoard;
+    // Initializing instance variables
+    private long redBoard;
+    private long yellowBoard;
     private long mask;
     private int spacesLeft;
 
     /**
-     * Default constructor that will initialize a new board
-     *
+     * Default constructor that will initialize an empty board
      */
     public BitBoard() {
         clear();
@@ -39,8 +42,8 @@ public class BitBoard {
      * @param bitBoard A BitBoard object that will be copied from
      */
     public BitBoard(BitBoard bitBoard) {
-        this.playerBoard = bitBoard.playerBoard;
-        this.opponentBoard = bitBoard.opponentBoard;
+        this.redBoard = bitBoard.redBoard;
+        this.yellowBoard = bitBoard.yellowBoard;
         this.mask = bitBoard.mask;
         this.spacesLeft = bitBoard.spacesLeft;
     }
@@ -50,8 +53,8 @@ public class BitBoard {
      * 
      */
     public void clear() {
-        playerBoard = 0;
-        opponentBoard = 0;
+        redBoard = 0;
+        yellowBoard = 0;
         mask = 0;
         spacesLeft = BOARD_HEIGHT * BOARD_WIDTH;
     }
@@ -64,7 +67,7 @@ public class BitBoard {
      * @param col An int representing the column a dics is being placed
      * @param player A char representing the player
      */
-    public void placeDisc(int col, char player) {
+    public void placeDisc(int col, Player player) {
         // Calculates the cell the disc will be placed at for the other placeDisc() method
         placeDisc(mask + BOTTOM_MASK_COLUMN[col], player);
     }
@@ -76,16 +79,16 @@ public class BitBoard {
      * @param move A long representing the cell the disc will be placed at
      * @param player A char representing the player
      */
-    public void placeDisc(long move, char player) {
+    public void placeDisc(long move, Player player) {
         
         // Places the disc at the given cell
         mask |= move;
         
         // Checks which player board to update
-        if (player == 'r') {
-            playerBoard = mask ^ opponentBoard;
+        if (player == Player.RED) {
+            redBoard = mask ^ yellowBoard;
         } else {
-            opponentBoard = mask ^ playerBoard;
+            yellowBoard = mask ^ redBoard;
         }
 
         spacesLeft--;
@@ -107,10 +110,10 @@ public class BitBoard {
         mask = mask ^ move;
 
         // Removes the piece from the player or opponent board
-        if ((move & playerBoard) != 0) {
-            playerBoard = mask ^ opponentBoard;
+        if ((move & redBoard) != 0) {
+            redBoard = mask ^ yellowBoard;
         } else {
-            opponentBoard = mask ^ playerBoard;
+            yellowBoard = mask ^ redBoard;
         }
 
         // Adds a space to the total amount of spots left since a piece has been removed 
@@ -135,13 +138,13 @@ public class BitBoard {
      * @param player A char representing the player ('r' is red and 'y' is yellow)
      * @return A boolean determining if the given player has won
      */
-    public boolean checkWinner(char player) {
+    public boolean checkWinner(Player player) {
 
         // Gets the board to check the winner for
-        if (player == 'r') {
-            return checkWinner(playerBoard);
+        if (player == Player.RED) {
+            return checkWinner(redBoard);
         } else {
-            return checkWinner(opponentBoard);
+            return checkWinner(yellowBoard);
         }
     }
 
@@ -151,19 +154,19 @@ public class BitBoard {
      * @param player A char representing the player
      * @return A boolean determining if the given player can win within the next move
      */
-    public boolean canWinNext(char player) {
+    public boolean canWinNext(Player player) {
         return (winningPosition(player) & possible()) != 0;
     }
 
-    public long possibleNonLosingMoves(char player) {
+    public long possibleNonLosingMoves(Player player) {
 
         long possibleMask = possible();
-        long opponentWin;
-        if (player == 'r') {
-            opponentWin = winningPosition('y');
-        } else {
-            opponentWin = winningPosition('r');
-        }
+        long opponentWin = winningPosition(Player.opponent(player));
+        // if (player == Player.RED) {
+        //     opponentWin = winningPosition(Player.opponent(player));
+        // } else {
+        //     opponentWin = winningPosition(Player.opponent(player));
+        // }
         long forcedMoves = possibleMask & opponentWin;
         if (forcedMoves != 0) {
             if ((forcedMoves & (forcedMoves - 1)) != 0) {
@@ -178,11 +181,11 @@ public class BitBoard {
 
 
 
-    public int moveScore(long move, char player) {
-        if (player == 'r') {
-            return Long.bitCount(computeWinningPosition(playerBoard | move));
+    public int moveScore(long move, Player player) {
+        if (player == Player.RED) {
+            return Long.bitCount(computeWinningPosition(redBoard | move));
         } else {
-            return Long.bitCount(computeWinningPosition(opponentBoard | move));
+            return Long.bitCount(computeWinningPosition(yellowBoard | move));
         }
     }
     
@@ -193,7 +196,7 @@ public class BitBoard {
      * @return A long representing a unique key for a given position
      */
     public long key() {
-        return playerBoard + BOTTOM_MASK + mask;
+        return redBoard + BOTTOM_MASK + mask;
     }
 
     /**
@@ -210,13 +213,13 @@ public class BitBoard {
 
 
 
-    public char load(String position) {
-        char player = 'r';
+    public Player load(String position) {
+        Player player = Player.RED;
         
         for (int i = 0; i < position.length(); i++) {
             //System.out.println(s.charAt(i));
             placeDisc(Character.getNumericValue(position.charAt(i) - 1), player);
-            player = (player == 'r') ? 'y': 'r';
+            player = Player.opponent(player);
         }
         return player;
     }
@@ -226,8 +229,8 @@ public class BitBoard {
         public String[][] toArray() {
 
         // Initializes a string of the binary representations of the player and opponent board
-        String playerBoardString = boardToBinaryString(playerBoard);
-        String opponentBoardString = boardToBinaryString(opponentBoard);
+        String redBoardString = boardToBinaryString(redBoard);
+        String yellowBoardString = boardToBinaryString(yellowBoard);
 
         String[][] boardArray = new String[6][7];
         //System.out.println(Arrays.toString(boardArray));
@@ -237,9 +240,9 @@ public class BitBoard {
             // Iterates horizontally
             for (int col = BOARD_WIDTH - 1; col > -1; col--) {
 
-                if (playerBoardString.charAt(row + BOARD_WIDTH * col) == '1') {
+                if (redBoardString.charAt(row + BOARD_WIDTH * col) == '1') {
                     boardArray[row - 1][BOARD_WIDTH - 1 - col] = "red";
-                } else if (opponentBoardString.charAt(row + BOARD_WIDTH * col) == '1') {
+                } else if (yellowBoardString.charAt(row + BOARD_WIDTH * col) == '1') {
                     boardArray[row - 1][BOARD_WIDTH - 1 - col] = "yellow";
                 } else {
                     boardArray[row - 1][BOARD_WIDTH - 1 - col] = null;
@@ -261,8 +264,8 @@ public class BitBoard {
     public String toString() {
         
         // Initializes a string of the binary representations of the player and opponent board
-        String playerBoardString = boardToBinaryString(playerBoard);
-        String opponentBoardString = boardToBinaryString(opponentBoard);
+        String redBoardString = boardToBinaryString(redBoard);
+        String yellowBoardString = boardToBinaryString(yellowBoard);
         String boardString = "-----------------------------\n";
 
         // Iterates vertically over the board
@@ -270,9 +273,9 @@ public class BitBoard {
             boardString += "|";
             // Iterates horizontally
             for (int col = BOARD_WIDTH - 1; col > -1; col--) {
-                if (playerBoardString.charAt(row + BOARD_WIDTH * col) == '1') {
+                if (redBoardString.charAt(row + BOARD_WIDTH * col) == '1') {
                     boardString += " X |";
-                } else if (opponentBoardString.charAt(row + BOARD_WIDTH * col) == '1') {
+                } else if (yellowBoardString.charAt(row + BOARD_WIDTH * col) == '1') {
                     boardString += " O |";
                 } else {
                     boardString += "   |";
@@ -317,12 +320,12 @@ public class BitBoard {
     }
 
 
-    private long winningPosition(char player) {
+    private long winningPosition(Player player) {
 
-        if (player == 'r') {
-            return computeWinningPosition(playerBoard);
+        if (player == Player.RED) {
+            return computeWinningPosition(redBoard);
         } else {
-            return computeWinningPosition(opponentBoard);
+            return computeWinningPosition(yellowBoard);
         }
     } 
 
@@ -366,8 +369,8 @@ public class BitBoard {
     /**
      * Calculates a bitmap of all the possible connect fours within the next move
      * 
-     * @param board A long 
-     * @return A bitmap containing all the possible connect fours
+     * @param board A long representing the board
+     * @return A bitmap of type long containing all the possible connect fours
      */
     private long computeWinningPosition(long board) {
 
@@ -426,17 +429,7 @@ public class BitBoard {
         return spacesLeft;
     }
 
-    public long getMask() {
-        return mask;
-    }
 
-    public long getPlayerBoard() {
-        return playerBoard;
-    }
-
-    public long getOpponentBoard() {
-        return opponentBoard;
-    }
 
 
     

@@ -1,15 +1,17 @@
 package com.connectfour.models;
 
+import com.connectfour.game.Player;
+
 public class MoveRequest {
     private String player;
     private int column;
 
     // Getters and setters
-    public char getPlayer() {
+    public Player getPlayer() {
         if (player.equals("red")) {
-            return 'r';
+            return Player.RED;
         }
-        return 'y';
+        return Player.YELLOW;
     }
 
     public void setPlayer(String player) {

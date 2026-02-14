@@ -12,26 +12,32 @@ import com.connectfour.game.OpeningBook.BookType;
 
 public class Solver {
 
-    private BitBoard board;
-    private final int TRANSPOSITION_TABLE_SIZE = (int)Math.pow(2, 23) + 9;
-    private final BookType BOOK = BookType.EIGHT_MOVES_DEBUG;
-    public TranspositionTable table;
-    private int[] moveOrder = {3, 4, 2, 5, 1, 6, 0};
+    private final int TRANSPOSITION_TABLE_SIZE = 1 << 23;
+    private final BookType BOOK = BookType.EIGHT_MOVES;
+    private final int[] MOVE_ORDER = generateMoveOrder();
+
+    private TranspositionTable table;
     private OpeningBook openingBook;
 
-    public Solver(BitBoard board) {
-        this.board = board;
+
+    /**
+     * Default constructor that will initialize the transposition table
+     * and opening book
+     * 
+     */
+    public Solver() {
         this.table = new TranspositionTable(TRANSPOSITION_TABLE_SIZE);
         this.openingBook = new OpeningBook(BOOK);
     }
 
     /**
-     * Given a player, this method will find the best move for that player
+     * Finds the best column to play given a board for a player
      * 
-     * @param player An char representing which player
-     * @return An int of the column that is the best move
+     * @param board A Bitboard of the current game
+     * @param player A Player enum reprenting the current player
+     * @return An int representing the column that is the best move
      */
-    public int findBestMove(char player) {
+    public int findBestMove(BitBoard board, Player player) {
 
         int bestMove = -1;
         int bestScore = Integer.MIN_VALUE + 1;
@@ -55,25 +61,26 @@ public class Solver {
 
         MoveSorter moves = new MoveSorter();
         for (int i = BitBoard.BOARD_WIDTH - 1; i >= 0; i--) {
-            long move = possibleMoves & BitBoard.columnMask(moveOrder[i]);
+            long move = possibleMoves & BitBoard.columnMask(MOVE_ORDER[i]);
             if (move != 0) {
                 moves.add(move, board.moveScore(move, player));
             }
         }
 
         long next = moves.getNext();
+        int count = 0;
 
         // Edge case when the only non-losing move is the first column
         if (next == 0) {
             return 0;
         }
         
-        for (int count = 0; count < 5; count++) {
+        while (next != 0 && count < 5) {
 
             board.placeDisc(next, player);
             int col = board.moveColumn(next);
 
-            int score = -solve(board, getOpponent(player));
+            int score = -solve(board, Player.opponent(player));
             board.removeDisc(next);
 
             if (score > bestScore) {
@@ -89,15 +96,15 @@ public class Solver {
 
 
 
-    public int solve(BitBoard board, char player) {
+    public int solve(BitBoard board, Player player) {
         if (board.checkDraw()) {
             return 0;
         } else if (board.canWinNext(player)) {
             return (board.getSpacesLeft() + 1) / 2;
         }
         
+        // Gets score from opening book
         if (BitBoard.BOARD_HEIGHT * BitBoard.BOARD_WIDTH - board.getSpacesLeft() <= BOOK.getMoveLength()) {
-            
             long key = board.key();
             int score = openingBook.get(key);
             if (score != Byte.MIN_VALUE) {
@@ -130,15 +137,15 @@ public class Solver {
     }
 
     /**
+     * Finds the score for a given position
      * 
-     * 
-     * @param board
-     * @param player
-     * @param alpha
-     * @param beta
+     * @param board A Bitboard of the current game
+     * @param player A Player enum reprenting the current player
+     * @param alpha An int of the lower bound score
+     * @param beta An int of the higher bound score
      * @return An int representing the score of that position
      */
-    private final int negamax(BitBoard board, char player, int alpha, int beta) {
+    private final int negamax(BitBoard board, Player player, int alpha, int beta) {
 
          // Checks if the position is drawn
         if (board.checkDraw()) {
@@ -193,7 +200,7 @@ public class Solver {
 
         MoveSorter moves = new MoveSorter();
         for (int i = BitBoard.BOARD_WIDTH - 1; i >= 0; i--) {
-            long move = possible & BitBoard.columnMask(moveOrder[i]);
+            long move = possible & BitBoard.columnMask(MOVE_ORDER[i]);
             if (move != 0) {
                 moves.add(move, board.moveScore(move, player));
             }
@@ -204,7 +211,7 @@ public class Solver {
         while(next != 0) {
 
             board.placeDisc(next, player);
-            int score = -negamax(board, getOpponent(player), -beta, -alpha);
+            int score = -negamax(board, Player.opponent(player), -beta, -alpha);
             
             board.removeDisc(next);
             next = moves.getNext();
@@ -223,11 +230,24 @@ public class Solver {
         return alpha;
     }
 
+    /**
+     * Calculates the move order, starting from the centre and then gradually stretching out, 
+     * for the width of the board. For a board that is 7 discs wide, the move order would be 
+     * {3, 4, 2, 5, 1, 6, 0}
+     */
+    public static int[] generateMoveOrder() {
+        int[] moveOrder = new int[BitBoard.BOARD_WIDTH];
+        int midpoint = BitBoard.BOARD_WIDTH / 2;
 
-    public char getOpponent(char player) {
-        if (player == 'r') {
-            return 'y';
+        for (int i = 0; i < BitBoard.BOARD_WIDTH; i++) {
+            if (i == 0) {
+                moveOrder[i] = midpoint;
+            } else if (i % 2 == 0) {
+                moveOrder[i] = midpoint - (i + 1) / 2;
+            } else {
+                moveOrder[i] = midpoint + (i + 1) / 2;
+            }
         }
-        return 'r';
+        return moveOrder; 
     }
 }

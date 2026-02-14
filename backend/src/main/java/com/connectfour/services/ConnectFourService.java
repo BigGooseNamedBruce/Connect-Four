@@ -2,6 +2,7 @@ package com.connectfour.services;
 
 import com.connectfour.game.BitBoard;
 import com.connectfour.game.Solver;
+import com.connectfour.game.Player;
 
 public class ConnectFourService {
 
@@ -11,21 +12,21 @@ public class ConnectFourService {
     }
 
     private BitBoard board = new BitBoard();
-    private Solver solver = new Solver(board);
+    private Solver solver = new Solver();
     private int bestMove = -1;
 
     public BitBoard startNewGame() {
         board = new BitBoard();
-        solver = new Solver(board);
+        solver = new Solver();
         return board;
     }
 
-    public String[][] playerMove(int column, char player) {
+    public String[][] playerMove(int column, Player player) {
         board.placeDisc(column, player);
         return board.toArray();
     }
 
-    public void place(int column, char player) {
+    public void place(int column, Player player) {
         board.placeDisc(column, player);
     }
 
@@ -34,8 +35,8 @@ public class ConnectFourService {
     }
 
 
-    public int computerBestMove(char player) {
-        return solver.findBestMove(player);
+    public int computerBestMove(Player player) {
+        return solver.findBestMove(board, player);
     }
 
 
@@ -60,12 +61,13 @@ public class ConnectFourService {
     }
 
     public String checkWinner() {
-        if (board.checkWinner('r')) {
+        if (board.checkWinner(Player.RED)) {
             return "red";
-        } else if (board.checkWinner('y')) {
+        } else if (board.checkWinner(Player.YELLOW)) {
             return "yellow";
         } else {
             return null;
         }
     }
 } 
+

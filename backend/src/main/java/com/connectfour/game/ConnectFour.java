@@ -10,7 +10,7 @@ public class ConnectFour {
 
     public ConnectFour() {
         this.board = new BitBoard();
-        this.solver = new Solver(board);
+        this.solver = new Solver();
         this.player = 'r';
     }
 

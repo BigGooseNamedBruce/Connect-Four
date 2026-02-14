@@ -14,6 +14,7 @@ import java.util.Scanner;
 
 import com.connectfour.game.BitBoard;
 import com.connectfour.game.Solver;
+import com.connectfour.game.Player;
 
 @Tag("performance")
 public class SolverPerformanceTest {
@@ -30,15 +31,15 @@ public class SolverPerformanceTest {
 
     BitBoard board;
     Solver solver;
-    char player;
+    Player player;
     long startTime;
     long endTime;
 
     @BeforeEach
     void setup() {
         board = new BitBoard();
-        solver = new Solver(board);
-        player = 'r';
+        solver = new Solver();
+        player = Player.RED;
     }
 
     @Test
@@ -71,7 +72,7 @@ public class SolverPerformanceTest {
                 for (int i = 0; i < moveOrder.length(); i++) {
                     //System.out.println(s.charAt(i));
                     board.placeDisc(Character.getNumericValue(moveOrder.charAt(i)) - 1, player);
-                    player = solver.getOpponent(player);
+                    player = Player.opponent(player);
                 }
                 
 
@@ -84,7 +85,7 @@ public class SolverPerformanceTest {
                 }
 
                 board.clear();
-                player = 'r';
+                player = Player.RED;
                 //break;
             }
         } catch (FileNotFoundException fileNotFoundException) {

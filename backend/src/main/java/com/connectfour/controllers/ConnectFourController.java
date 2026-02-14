@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.connectfour.services.ConnectFourService;
+import com.connectfour.game.Player;
 import com.connectfour.models.MoveRequest;
 import com.connectfour.models.PlayerRequest;
 import com.connectfour.dto.ConnectFourResponse;
@@ -22,6 +23,11 @@ public class ConnectFourController {
     @GetMapping("/position")
     public String[][] getGamePosition() {
         return connectfourService.getGameArrayPosition();
+    }
+
+    @GetMapping("/test")
+    public Player test() {
+        return Player.RED;
     }
 
     @GetMapping("/winner")

@@ -28,8 +28,8 @@ public class SolverTest {
     void testSolver() {
         String filepath = "src/test/resources/Test_L1_R1_Begin_Easy.txt";
         BitBoard board = new BitBoard();
-        Solver solver = new Solver(board);
-        char player = 'r';
+        Solver solver = new Solver();
+        Player player = Player.RED;
 
         try {
             Scanner scanner = new Scanner(new File(filepath));
@@ -43,14 +43,14 @@ public class SolverTest {
 
                 for (int i = 0; i < moveOrder.length(); i++) {
                     board.placeDisc(Character.getNumericValue(moveOrder.charAt(i)) - 1, player);
-                    player = solver.getOpponent(player);
+                    player = Player.opponent(player);
                 } 
 
                 int testScore = solver.solve(board, player);
                 assertEquals(score, testScore, "I fail");
 
                 board.clear();
-                player = 'r';
+                player = Player.RED;
             }
         } catch (FileNotFoundException fileNotFoundException) {
             fail(filepath + " not found");
@@ -59,8 +59,11 @@ public class SolverTest {
 
 
     public static void main(String[] args) throws Exception{
+        BitBoard board = new BitBoard();
+        Solver solver = new Solver();
         long start = System.nanoTime(); 
-        int count = testNegamax("backend/src/test/resources/Test_L2_R2_Middle_Medium.txt");
+
+        int count = testNegamax("backend/src/test/resources/Test_L1_R3_Begin_Hard.txt", board, solver);
         
         //BitBoard board = new BitBoard();
         //Solver solver = new Solver(board);
@@ -73,14 +76,13 @@ public class SolverTest {
         System.out.println(count);
     }
 
-    public static int testNegamax(String filename) {
+    public static int testNegamax(String filename, BitBoard board, Solver solver) {
         int count = 0;
         File file = new File(filename);
-        BitBoard board = new BitBoard();
-        Solver solver = new Solver(board);
+        
         //char player = 'X';
-        char player = 'r';
-
+        Player player = Player.RED;
+        int wrong = 0;
 
         try {
             Scanner scanner = new Scanner(file);
@@ -95,7 +97,7 @@ public class SolverTest {
                 for (int i = 0; i < moveOrder.length(); i++) {
                     //System.out.println(s.charAt(i));
                     board.placeDisc(Character.getNumericValue(moveOrder.charAt(i)) - 1, player);
-                    player = solver.getOpponent(player);
+                    player = Player.opponent(player);
                 }
                 
 
@@ -105,12 +107,14 @@ public class SolverTest {
                     ;
                 } else {
                     System.out.println("False: " + testScore + " != " + score + " " + count);
+                    wrong++;
                 }
 
                 board.clear();
-                player = 'r';
+                player = Player.RED;
                 //break;
                 if (count >= 1000) {
+                    System.out.println("Wrong: " + wrong);
                     return count;
                 }
             }

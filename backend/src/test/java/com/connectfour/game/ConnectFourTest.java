@@ -11,9 +11,9 @@ public class ConnectFourTest {
         BitBoard board = new BitBoard();
         
 
-        Solver solver = new Solver(board);
+        Solver solver = new Solver();
         System.out.println(board);
-        char player = 'r';
+        Player player = Player.RED;
         //board.placeDisc(3, 'X');
         //65323776614155213553376652122427
         String s = "3464123621337153667644637227";
@@ -21,7 +21,7 @@ public class ConnectFourTest {
         for (int i = 0; i < s.length(); i++) {
             //System.out.println(s.charAt(i));
             board.placeDisc(Character.getNumericValue(s.charAt(i) - 1), player);
-            player = solver.getOpponent(player);
+            player = Player.opponent(player);
         }
         
 
