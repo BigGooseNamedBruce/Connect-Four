@@ -1,14 +1,23 @@
 package com.connectfour.game;
 
 /**
- * This file contains all the methods related to the Connect Four board
+ * A bitboard-based representation of a Connect Four board.
+ * 
+ * Each player is represented by a 64-bit bitmap where each playable cell 
+ * corresponds to a single bit.
+ * 
+ * Each column uses BOARD_HEIGHT + 1 bits. The extra bit per column acts as 
+ * a sentinel to simplify move generation and to detect when a column is full.
+ * 
+ * The class contains three bitmaps:
+ * - redBoard: all cells occupied by the red player
+ * - yellowBoard: all cells occupied by the yellow player
+ * - mask: all cells positions on the board
  * 
  * @author Brayden T
- * 
  */
 
 public class BitBoard {
-    
     // Board constants
     public static final int BOARD_HEIGHT = 6;
     public static final int BOARD_WIDTH = 7;
@@ -18,9 +27,10 @@ public class BitBoard {
     public static final int MAX_SCORE = (BOARD_WIDTH * BOARD_HEIGHT + 1) / 2 - 3;
 
     // Bitmasks for board bitwise operations
-    private static final long BOTTOM_MASK = bottomMask();
+    private static final long BOTTOM_MASK = generateBottomMask();
     private static final long BOARD_MASK = BOTTOM_MASK * ((1L << BOARD_HEIGHT) - 1);
     private static final long[] COLUMN_MASK = generateColumnMask();
+    private static final long[] TOP_MASK_COLUMN = generateTopMaskColumn();
     private static final long[] BOTTOM_MASK_COLUMN = generateBottomMaskColumn();
 
     // Initializing instance variables
@@ -30,16 +40,16 @@ public class BitBoard {
     private int spacesLeft;
 
     /**
-     * Default constructor that will initialize an empty board
+     * Default constructor initializing an empty board
      */
     public BitBoard() {
         clear();
     }
 
     /**
-     * Parameterized constructor that will inialize a copy of a board
+     * Copy constructor for creating a deep copy of an existing board
      * 
-     * @param bitBoard A BitBoard object that will be copied from
+     * @param bitBoard A Bitboard instance that will be copied from
      */
     public BitBoard(BitBoard bitBoard) {
         this.redBoard = bitBoard.redBoard;
@@ -49,8 +59,7 @@ public class BitBoard {
     }
 
     /**
-     * This method resets the board to its default settings
-     * 
+     * Resets the board state to an empty board
      */
     public void clear() {
         redBoard = 0;
@@ -59,29 +68,26 @@ public class BitBoard {
         spacesLeft = BOARD_HEIGHT * BOARD_WIDTH;
     }
 
-
-    
     /**
-     * Given a column and a player, this method will place a disc in that column for the given player
+     * Places a disc in a specified column for a given player. 
      * 
-     * @param col An int representing the column a dics is being placed
-     * @param player A char representing the player
+     * @param col The column index [0, 6] the disc is to be placed
+     * @param player The player placing the disc
      */
     public void placeDisc(int col, Player player) {
-        // Calculates the cell the disc will be placed at for the other placeDisc() method
-        placeDisc(mask + BOTTOM_MASK_COLUMN[col], player);
+        // Calculates the bitmap for where the disc to be placed
+        long move = mask + BOTTOM_MASK_COLUMN[col];
+        placeDisc(move, player);
     }
 
     /**
-     * Given a number representing the cell a disc will be placed and a player, 
-     * this method will place a disc in that cell for the given player
+     * Places a disc given a bitmap representation of the move for a given player
      * 
-     * @param move A long representing the cell the disc will be placed at
-     * @param player A char representing the player
+     * @param move A bitmap representing where the disc is to be placed
+     * @param player The player placing the disc
      */
     public void placeDisc(long move, Player player) {
-        
-        // Places the disc at the given cell
+        // Places the disc at the given bit index
         mask |= move;
         
         // Checks which player board to update
@@ -94,53 +100,53 @@ public class BitBoard {
         spacesLeft--;
     }
 
-
     /**
-     * Given a column, this method will remove the top disc in that column
+     * Removes the top disc in a specified column.
      * 
-     * @param col An int representing the column that the disc will be removed from
+     * @param col The column index [0, 6] the top disc is to be removed
      */
     public void removeDisc(int col) {
+        // Calculates the bitmap for where the disc to be removed
         long move = ~((COLUMN_MASK[col] & mask) >> 1) & (COLUMN_MASK[col] & mask);
         removeDisc(move);
     }
 
+    /**
+     * Removed a disc given a bitmap representation of the move
+     * 
+     * @param move A bitmap representing where the disc is to be removed
+     */
     public void removeDisc(long move) {
-
+        // Places the disc at the given bit index
         mask = mask ^ move;
 
-        // Removes the piece from the player or opponent board
+        // Checks which player board to update
         if ((move & redBoard) != 0) {
             redBoard = mask ^ yellowBoard;
         } else {
             yellowBoard = mask ^ redBoard;
         }
 
-        // Adds a space to the total amount of spots left since a piece has been removed 
         spacesLeft++;   
     }
 
     /**
-     * This method checks if a column if full or not. It will
-     * return true if it is full and false if it isn't
+     * Checks if the specified column has reached its maximum height
      * 
-     * @param col An int representing the column being checked
-     * @return A boolean determining if the column if full
+     * @param col The column index [0, 6] to be checked
+     * @return True if no more discs can be placed in the specified column
      */
     public boolean isColumnFull(int col) {
-        return (mask & topMaskColumn(col)) != 0;
+        return (mask & TOP_MASK_COLUMN[col]) != 0;
     }
 
-
     /**
-     * Given a player, this wrapper method will check if that player has won or not
+     * Checks if a given winner has gotten connect four
      * 
-     * @param player A char representing the player ('r' is red and 'y' is yellow)
-     * @return A boolean determining if the given player has won
+     * @param player The player to check if they've won
+     * @return True if the given player has won
      */
     public boolean checkWinner(Player player) {
-
-        // Gets the board to check the winner for
         if (player == Player.RED) {
             return checkWinner(redBoard);
         } else {
@@ -149,29 +155,37 @@ public class BitBoard {
     }
 
     /**
-     * Checks if a player can win within the next move
+     * Checks if a given player can win on their next move
      * 
-     * @param player A char representing the player
-     * @return A boolean determining if the given player can win within the next move
+     * @param player The player to check if they can win on their next move
+     * @return True if the given player can win on their next move
      */
     public boolean canWinNext(Player player) {
         return (winningPosition(player) & possible()) != 0;
     }
 
+    /**
+     * Finds the bitmap of all possible moves where the given player doesn't immediately 
+     * lose on the next move
+     * 
+     * @param player The player to find the bitmap for
+     * @return A bitmap representing all possible moves the given does not lose on their 
+     *         next turn
+     */
     public long possibleNonLosingMoves(Player player) {
-
+        // Calculates a bitmap where opponent player can win on their next move
         long possibleMask = possible();
         long opponentWin = winningPosition(Player.opponent(player));
-        // if (player == Player.RED) {
-        //     opponentWin = winningPosition(Player.opponent(player));
-        // } else {
-        //     opponentWin = winningPosition(Player.opponent(player));
-        // }
         long forcedMoves = possibleMask & opponentWin;
+
+        // Opponent can win on their next turn
         if (forcedMoves != 0) {
+            // Opponent has more than winning move that the given player cannot stop
             if ((forcedMoves & (forcedMoves - 1)) != 0) {
                 return 0;
-            } else {
+            } 
+            // Blocks opponent from winning on their next turn
+            else {
                 possibleMask = forcedMoves;
             }
         }
@@ -179,8 +193,13 @@ public class BitBoard {
         return possibleMask & ~(opponentWin >> 1);
     }
 
-
-
+    /**
+     * Computes the score of a move given its bitmap representation
+     * 
+     * @param move A bitmap of the move to be scored
+     * @param player The player who can the move
+     * @return The score of the move
+     */
     public int moveScore(long move, Player player) {
         if (player == Player.RED) {
             return Long.bitCount(computeWinningPosition(redBoard | move));
@@ -189,51 +208,63 @@ public class BitBoard {
         }
     }
     
-
     /**
      * Generates a unique key for any Connect Four position
      * 
-     * @return A long representing a unique key for a given position
+     * @return A unique key for any given position
      */
     public long key() {
         return redBoard + BOTTOM_MASK + mask;
     }
 
     /**
-     * Given a move from MoveSorter, convert it to a column
+     * Converts a move from its bitmap representation to a column index
      * 
-     * @param move
-     * @return
+     * @param move A bitmap of the move to be converted
+     * @return A column index of the move
      */
     public int moveColumn(long move) {
-        //return Long.numberOfTrailingZeros(mask ^ (move | mask)) / BOARD_WIDTH;
-
         return Long.numberOfTrailingZeros(move) / 7;
     }
 
-
-
+    /**
+     * Loads a position into the board given it's string representation. A string 
+     * representation of a connect 4 game will have the format "22344", where each 
+     * character representes the column index to be played. 
+     * 
+     * In the example "22344":
+     * - Turn 1: Red places a disc in the second column
+     * - Turn 2: Yellow places a disc in the second column
+     * - Turn 3: Red places a disc in the third column
+     * - ...
+     * 
+     * @param position A string representation of the current state of the board
+     * @return The player whose turn it is after loading the position
+     */
     public Player load(String position) {
+        // First player is already red
         Player player = Player.RED;
         
+        // Places the disc at each column while alternating players
         for (int i = 0; i < position.length(); i++) {
-            //System.out.println(s.charAt(i));
-            placeDisc(Character.getNumericValue(position.charAt(i) - 1), player);
+            int col = Character.getNumericValue(position.charAt(i)) - 1;
+            placeDisc(col, player);
             player = Player.opponent(player);
         }
+
         return player;
     }
 
-
-
-        public String[][] toArray() {
-
+    /**
+     * Converts the bitboard into an array representation
+     * 
+     * @return An array representation of the bitboard
+     */
+    public String[][] toArray() {
         // Initializes a string of the binary representations of the player and opponent board
         String redBoardString = boardToBinaryString(redBoard);
         String yellowBoardString = boardToBinaryString(yellowBoard);
-
         String[][] boardArray = new String[6][7];
-        //System.out.println(Arrays.toString(boardArray));
 
         // Iterates vertically over the board
         for (int row = 1; row < BOARD_HEIGHT + 1; row++) {
@@ -253,17 +284,14 @@ public class BitBoard {
         return boardArray;
     }
 
-
-    
     /**
-     * Returns a visual representation of the Connect Four board
+     * Converts the bitboard into an String representation
      * 
-     * @return A string of the Connect Four Board
+     * @return A string representation of the bitboard
      */
     @Override
     public String toString() {
-        
-        // Initializes a string of the binary representations of the player and opponent board
+        // Initializes a string of the binary representations of the red and yellow board
         String redBoardString = boardToBinaryString(redBoard);
         String yellowBoardString = boardToBinaryString(yellowBoard);
         String boardString = "-----------------------------\n";
@@ -288,13 +316,10 @@ public class BitBoard {
         return boardString;
     }
 
-
-
-
     /**
-     * Converts a board position to a binary string
+     * Converts a bitmap to a binary string
      * 
-     * @param board A long representing a board
+     * @param board The bitmap to be converted
      * @return A binary string of the board
      */
     public static String boardToBinaryString(long board) {
@@ -303,12 +328,6 @@ public class BitBoard {
 
         return boardString;
     }
-
-
-
-
-
-
 
     /**
      * Gets a bitmap of all the possible playable moves 
@@ -319,9 +338,14 @@ public class BitBoard {
         return (mask + BOTTOM_MASK) & BOARD_MASK;
     }
 
-
+    /**
+     * Calculates a bitmap of all the possible connect fours within the next move 
+     * for a given player
+     * 
+     * @param player The player to find if they can within the next move
+     * @return A bitmap of all possible connect fours within the next move
+     */
     private long winningPosition(Player player) {
-
         if (player == Player.RED) {
             return computeWinningPosition(redBoard);
         } else {
@@ -329,15 +353,13 @@ public class BitBoard {
         }
     } 
 
-
-        /**
-     * Given a board, this helper method will determine if that board contains a connect four
+    /**
+     * Checks if the given board has a connect four
      * 
-     * @param board A long representing a player board
-     * @return A boolean determining if the given board contains a connect four
+     * @param board A bitmap of the board
+     * @return True if the given board has a connect four
      */
     private boolean checkWinner(long board) {
-
         // Checks for horizontal win
         long horizontalAlignment = board & (board >> (BOARD_HEIGHT + 1));
         if ((horizontalAlignment & (horizontalAlignment >> (2 * (BOARD_HEIGHT + 1)))) != 0) {
@@ -365,94 +387,93 @@ public class BitBoard {
         return false;
     }
 
-
     /**
      * Calculates a bitmap of all the possible connect fours within the next move
      * 
-     * @param board A long representing the board
-     * @return A bitmap of type long containing all the possible connect fours
+     * @param board A bitmap of the board
+     * @return A bitmap of all possible connect fours within the next move
      */
     private long computeWinningPosition(long board) {
+        // Checks vertically if there is a possible connect four
+        long winningPositions = (board << 1) & (board << 2) & (board << 3);
 
-        // Checks if a vertically move can lead to a win
-        long r = (board << 1) & (board << 2) & (board << 3);
+        // Checks horizontally if there is a possible connect four
+        long twoInARow = (board << (BOARD_HEIGHT + 1)) & (board << 2 * (BOARD_HEIGHT + 1));
+        winningPositions |= twoInARow & (board << 3 * (BOARD_HEIGHT + 1));
+        winningPositions |= twoInARow & (board >> (BOARD_HEIGHT + 1));
+        twoInARow >>= 3 * (BOARD_HEIGHT + 1);
+        winningPositions |= twoInARow & (board << (BOARD_HEIGHT + 1));
+        winningPositions |= twoInARow & (board >> 3 * (BOARD_HEIGHT + 1));
 
+        // Checks diagonally upwards and to the right if there is a possible connect four
+        twoInARow = (board << (BOARD_HEIGHT + 2)) & (board << 2 * (BOARD_HEIGHT + 2));
+        winningPositions |= twoInARow & (board << 3 * (BOARD_HEIGHT + 2));
+        winningPositions |= twoInARow & (board >> (BOARD_HEIGHT + 2));
+        twoInARow >>= 3 * (BOARD_HEIGHT + 2);
+        winningPositions |= twoInARow & (board << (BOARD_HEIGHT + 2));
+        winningPositions |= twoInARow & (board >> 3 * (BOARD_HEIGHT + 2));
 
-        // Checks if a horizontally move can lead to a win
-        long p = (board << (BOARD_HEIGHT + 1)) & (board << 2 * (BOARD_HEIGHT + 1));
+        // Checks diagonally downwards and to the right if there is a possible connect four
+        twoInARow = (board << BOARD_HEIGHT) & (board << 2 * BOARD_HEIGHT);
+        winningPositions |= twoInARow & (board << 3 * BOARD_HEIGHT);
+        winningPositions |= twoInARow & (board >> BOARD_HEIGHT);
+        twoInARow >>= 3 * BOARD_HEIGHT;
+        winningPositions |= twoInARow & (board << BOARD_HEIGHT);
+        winningPositions |= twoInARow & (board >> 3 * BOARD_HEIGHT);
 
-        r |= p & (board << 3 * (BOARD_HEIGHT + 1));
-        r |= p & (board >> (BOARD_HEIGHT + 1));
-        p >>= 3*(BOARD_HEIGHT + 1);
-        r |= p & (board << (BOARD_HEIGHT + 1));
-        r |= p & (board >> 3 * (BOARD_HEIGHT + 1));
-
-        // Checks if a diagonally upwards and to the right move can lead to win
-        p = (board << (BOARD_HEIGHT+2)) & (board << 2*(BOARD_HEIGHT+2));
-        r |= p & (board << 3*(BOARD_HEIGHT+2));
-        r |= p & (board >> (BOARD_HEIGHT+2));
-        p >>= 3*(BOARD_HEIGHT+2);
-        r |= p & (board << (BOARD_HEIGHT+2));
-        r |= p & (board >> 3*(BOARD_HEIGHT+2));
-
-        // Checks if a diagonally downwards and to the right move can lead to win
-        p = (board << BOARD_HEIGHT) & (board << 2*BOARD_HEIGHT);
-        r |= p & (board << 3*BOARD_HEIGHT);
-        r |= p & (board >> BOARD_HEIGHT);
-        p >>= 3*BOARD_HEIGHT;
-        r |= p & (board << BOARD_HEIGHT);
-        r |= p & (board >> 3*BOARD_HEIGHT);
-
-        
-        return r & (BOARD_MASK ^ mask);
-
+        return winningPositions & (BOARD_MASK ^ mask);
     }
 
-
-
-
     /**
-     * Checks if the game has become a draw
+     * Checks if the game has become a draw by checking if there are no more 
+     * possible moves
      * 
-     * @return A boolean determining if the game currently a draw
+     * @return True of the game is a draw
      */
     public boolean checkDraw() {
         return spacesLeft == 0;
     }
 
     /**
-     * Accessor method to get the amount of empty cells on the board
+     * Getter method to get the amount of empty cells that are on the board
      * 
-     * @return An int representing the amount of empty cells on the board
+     * @return The number of empty cells on the board
      */
     public int getSpacesLeft() {
         return spacesLeft;
     }
 
-
-
-
-    
     /**
-     * Generates a mask for the entire given column For example, the following 
-     * would be the column mask for column 3 and for a 7x6 Connect Four board
+     * Getter method to get the amount of moves played so far
      * 
-     * 0001000
-     * 0001000
-     * 0001000
-     * 0001000
-     * 0001000
-     * 0001000
-     * 0001000
-     * 
-     * @param col An int representing the column for which the column mask needs to be found
-     * @return A long representing the column mask
+     * @return The number of moves played so far
      */
-    public static long columnMask(int col) {
-        //return ((1L << BOARD_HEIGHT) - 1) << (col * (BOARD_HEIGHT + 1));
-        return BitBoard.COLUMN_MASK[col];
+    public int getMoveCount() {
+        return BOARD_HEIGHT * BOARD_WIDTH - spacesLeft;
     }
 
+    /**
+     * Getter method to get the column bitmask for a given column
+     * 
+     * @param col The column bitmask to be found
+     * @return A column bitmask of the given column
+     */
+    public static long getColumnMask(int col) {
+        return COLUMN_MASK[col];
+    }
+
+    /**
+     * Generates an array of column bitmasks for every column. For example,
+     * a column bitmask for the third column of a 7x6 board would be:
+     * 
+     * 0001000
+     * 0001000
+     * 0001000
+     * 0001000
+     * 0001000
+     * 0001000
+     * 0001000
+     */
     private static long[] generateColumnMask() {
         long[] columnMask = new long[BOARD_WIDTH];
         for (int i = 0; i < columnMask.length; i++) {
@@ -462,8 +483,8 @@ public class BitBoard {
     }
 
     /**
-     * Generates a bottom mask for a board. For example, the following 
-     * would be the bottom mask for a 7x6 Connect Four board
+     * Generates a bitmask for bottom of the board. For example, the bitmask
+     * for the bottom of a 7x6 board would be:
      * 
      * 0000000
      * 0000000
@@ -472,10 +493,8 @@ public class BitBoard {
      * 0000000
      * 0000000
      * 1111111
-     * 
-     * @return A long representing the bottom mask
      */
-    private static long bottomMask() {
+    private static long generateBottomMask() {
         long boardMask = 0;
         for (int i = 0; i < BOARD_WIDTH; i++) {
             boardMask += 1L << (BOARD_HEIGHT + 1) * i;
@@ -484,8 +503,9 @@ public class BitBoard {
     }
 
     /**
-     * Generates a top mask for a column. For example, the following 
-     * would be the top mask for column 3 and for a 7x6 Connect Four board
+     * Generates an array of column bitmasks of only the top row for every column.
+     * For example, a column bitmask of only the top row for the third column of a 
+     * 7x6 board would be:
      * 
      * 0001000
      * 0000000
@@ -494,17 +514,19 @@ public class BitBoard {
      * 0000000
      * 0000000
      * 0000000
-     * 
-     * @param col An int representing the column for which the top mask needs to be found
-     * @return A long representing the top mask for that column
      */
-    private static long topMaskColumn(int col) {
-        return (1L << (BOARD_HEIGHT - 1)) << (col * (BOARD_HEIGHT + 1));
+    private static long[] generateTopMaskColumn() {
+        long[] topMaskColumn = new long[BOARD_WIDTH];
+        for (int col = 0; col < BOARD_WIDTH; col++) {
+            topMaskColumn[col] = (1L << (BOARD_HEIGHT - 1)) << (col * (BOARD_HEIGHT + 1));
+        }
+        return topMaskColumn;
     }
 
     /**
-     * Generates a bottom mask for a column. For example, the following 
-     * would be the bottom mask for column 3 and for a 7x6 Connect Four board
+     * Generates an array of column bitmasks of only the bottom row for every column.
+     * For example, a column bitmask of only the bottom row for the third column of a 
+     * 7x6 board would be:
      * 
      * 0000000
      * 0000000
@@ -513,14 +535,7 @@ public class BitBoard {
      * 0000000
      * 0000000
      * 0001000
-     * 
-     * @param col An int representing the column for which the bottom mask needs to be found
-     * @return A long representing the bottom mask for that column
      */
-    private static long bottomMaskColumn(int col) {
-        return 1L << (col * (BOARD_HEIGHT + 1));
-    }
-
     private static long[] generateBottomMaskColumn() {
         long[] bottomMaskColumn = new long[BOARD_WIDTH];
         for (int col = 0; col < BOARD_WIDTH; col++) {
@@ -528,5 +543,4 @@ public class BitBoard {
         }
         return bottomMaskColumn;
     }
-
 }
