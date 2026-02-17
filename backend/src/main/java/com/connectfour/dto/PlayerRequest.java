@@ -1,4 +1,4 @@
-package com.connectfour.models;
+package com.connectfour.dto;
 
 import com.connectfour.game.Player;
 
