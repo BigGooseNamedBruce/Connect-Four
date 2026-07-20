@@ -1,9 +1,11 @@
 {
     "name": "connect-four",
     "scripts": {
-        "start": "concurrently \"npm run start-frontend\" \"npm run start-backend\"",
-        "start-frontend": "cd frontend && npm run dev",
-        "start-backend": "cd backend && mvn spring-boot:run"
+        "start": "concurrently -k -n backend,frontend -c blue,green \"npm run start:backend\" \"npm run start:frontend\"",
+        "dev": "npm start",
+        "start:frontend": "npm --prefix frontend run dev",
+        "start:backend": "mvn -f backend/pom.xml org.springframework.boot:spring-boot-maven-plugin:run",
+        "install:all": "npm install && npm --prefix frontend install"
     },
     "devDependencies": {
         "concurrently": "^8.0.0"
