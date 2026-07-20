@@ -1,800 +1,275 @@
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
+import { flushSync } from "react-dom";
 import axios from "axios";
-import './Board.css'
-import LoadingScreen from '../LoadingScreen/LoadingScreen'
+import "./Board.css";
+import { API_BASE, isBoardFull } from "../../config";
 
+const COLS = 7;
 
-const Board = ({board, setBoard, player, setPlayer, isScreenFrozen, isWinScreenOpen, setIsScreenFrozen}) => {
-        //const [isLoadingScreenOpen, setLoadingScreenOpen] = useState(false);
-    //const isLoadingScreenOpen = useRef(false);
-    const [isLoadingScreenOpen, setLoadingScreenOpen] = useState(false);
+const Board = ({
+  board,
+  setBoard,
+  mode,
+  humanColour,
+  aiColour,
+  difficulty,
+  currentTurn,
+  gameOver,
+  setWinner,
+  onMovePlayed,
+  isThinking,
+  setIsThinking,
+  setIsBusy,
+  gameId,
+}) => {
+  const boardRef = useRef(null);
+  const discLayerRef = useRef(null);
+  const fxLayerRef = useRef(null); // holds the animated falling disc (not reconciled by React)
+  const busyRef = useRef(false); // synchronous mutex: one move/animation at a time
+  const gameIdRef = useRef(gameId); // latest game id, for discarding stale AI moves
 
-    const animationRef = useRef(null);
-    const boardRef = useRef(null);
-    const [lastMove, setLastMove] = useState(null);
-    const discLayerRef = useRef(null);
-    let frozenScreen = false;
-
-    const updateBoard = (newBoard) => {
-      boardRef.current = newBoard;
-      setBoard(newBoard);
-    }
-
-    const deepcopy = (board) => {
-      let boardCopy = [...board];
-      for (let i = 0; i < boardCopy.length; i++) {
-        boardCopy[i] = [...boardCopy[i]];
+  const clearFxLayer = () => {
+    const fx = fxLayerRef.current;
+    if (fx) {
+      while (fx.firstChild) {
+        fx.removeChild(fx.firstChild);
       }
-      return boardCopy;
     }
+  };
 
-    const drop = (board, player, col) => {
-      let boardCopy = deepcopy(board);
-      for (let row = boardCopy.length - 1; row >= 0; row--) {
-        if (boardCopy[row][col] === null) {
+  useEffect(() => {
+    gameIdRef.current = gameId;
+  }, [gameId]);
 
-          //boardCopy[row][col] = player;
-          //setBoard(boardCopy);
-          //updateBoard(boardCopy);
-          //return boardCopy;
-          return row;
+  // A new game clears the move mutex and removes any leftover animation discs, so a stale
+  // in-flight operation can never freeze input or leave floating pieces on the board.
+  useEffect(() => {
+    busyRef.current = false;
+    clearFxLayer();
+  }, [gameId]);
+
+  // Remove any animation discs when the board unmounts.
+  useEffect(() => {
+    return () => clearFxLayer();
+  }, []);
+
+  // Row index of the most recently placed disc in a column (top-most filled cell).
+  const landingRow = (b, col) => {
+    for (let r = 0; r < b.length; r++) {
+      if (b[r][col] !== null) {
+        return r;
+      }
+    }
+    return -1;
+  };
+
+  // Animates a single disc dropping into its landing cell. The disc element lives between the
+  // white hole layer and the blue grid overlay, so it visually falls through the slots.
+  const animateDrop = (col, colour, newBoard, token) =>
+    new Promise((resolve) => {
+      const fx = fxLayerRef.current;
+      const layer = discLayerRef.current;
+      const row = landingRow(newBoard, col);
+      const target = layer
+        ? layer.querySelector(`.hole[data-r="${row}"][data-c="${col}"]`)
+        : null;
+
+      if (!fx || !target) {
+        if (token === undefined || token === gameIdRef.current) {
+          setBoard(newBoard);
         }
-        
+        resolve();
+        return;
       }
-      return -1;
-    }
 
-//     const animateDiscDrop = (col, row, color, onComplete) => {
-//   if (!boardRef.current) return;
-
-//   // Select the top cell in the target column to get size and position
-//   const firstCell = boardRef.current.querySelector(`[data-row="0"][data-col="${col}"]`);
-//   if (!firstCell) return;
-
-//   // Create the disc element with correct color class
-//   const disc = document.createElement("div");
-//   disc.className = `disc ${color}`;
-
-//   // Calculate size and gap for positioning
-//   const cellSize = firstCell.offsetHeight;
-//   const gapSize = parseFloat(getComputedStyle(boardRef.current).gap) || 0;
-
-//   // Initial styles for disc (start above the board)
-//   disc.style.position = "absolute";
-//   disc.style.width = `${cellSize}px`;
-//   disc.style.height = `${cellSize}px`;
-//   disc.style.borderRadius = "50%";
-//   disc.style.left = `${firstCell.offsetLeft}px`;
-//   disc.style.top = `-12vh`; // start above board (adjust if needed)
-//   disc.style.zIndex = 10;
-//   disc.style.transition = "top 0.5s ease-out";
-
-//   // Append the disc to the board container
-//   boardRef.current.appendChild(disc);
-
-//   // Calculate target top position for disc (row * (cellSize + gap))
-//   const targetTop = row * (cellSize + gapSize);
-
-//   // Trigger the animation on next frame
-//   requestAnimationFrame(() => {
-//     disc.style.top = `${targetTop}px`;
-//   });
-
-//   // Cleanup after animation ends
-//   disc.addEventListener("transitionend", () => {
-//     disc.remove();
-//     onComplete();
-//   }, { once: true });
-// };
-
-    // const animateAndSetBoard = (row, col, player) => {
-    //   return new Promise((resolve) => {
-    //     if (!boardRef.current) {
-    //       resolve();
-    //       return;
-    //     }
-
-    //     const firstCell = boardRef.current.querySelector(`[data-row="0"][data-col="${col}"]`);
-    //     if (!firstCell) {
-    //       resolve();
-    //       return;
-    //     }
-
-    //     const disc = document.createElement("div");
-    //     disc.className = `disc ${player}`;
-
-    //     const cellSize = firstCell.offsetHeight;
-    //     const gapSize = parseFloat(getComputedStyle(boardRef.current).gap) || 0;
-
-    //     disc.style.position = "absolute";
-    //     disc.style.width = `${cellSize}px`;
-    //     disc.style.height = `${cellSize}px`;
-    //     disc.style.borderRadius = "50%";
-    //     disc.style.left = `${firstCell.offsetLeft}px`;
-    //     disc.style.top = `-60px`; // Start above board
-    //     disc.style.zIndex = 10;
-    //     disc.style.transition = "top 0.5s ease-out";
-
-    //     boardRef.current.appendChild(disc);
-
-    //     const targetTop = row * (cellSize + gapSize);
-
-    //     requestAnimationFrame(() => {
-    //       disc.style.top = `${targetTop}px`;
-    //     });
-
-    //     disc.addEventListener("transitionend", () => {
-    //       disc.remove();
-
-    //       // Update the board state
-    //       setBoard(prevBoard => {
-    //         const newBoard = deepcopy(prevBoard);
-    //         newBoard[row][col] = player;
-    //         return newBoard;
-    //       });
-
-    //       resolve();  // Animation done — resolve the promise!
-    //     });
-    //   });
-    // };
-
-//     const animateDiscDrop = (col, row, color, onComplete) => {
-//   if (!boardRef.current) return;
-//   row++;
-//   // Select the target cell where the disc should land
-//   const targetCell = boardRef.current.querySelector(`[data-row="${row}"][data-col="${col}"]`);
-//   const firstCell = boardRef.current.querySelector(`[data-row="0"][data-col="${col}"]`);
-//   if (!firstCell || !targetCell) return;
-
-//   const disc = document.createElement("div");
-//   disc.className = `disc ${color}`;
-
-//   const cellSize = firstCell.offsetHeight;
-
-//   // Positioning the disc absolutely relative to the board
-//   disc.style.position = "absolute";
-//   disc.style.width = `${cellSize}px`;
-//   disc.style.height = `${cellSize}px`;
-//   disc.style.borderRadius = "50%";
-  
-//   // Start position (above the board at the top cell's horizontal position)
-//   disc.style.left = `${firstCell.offsetLeft}px`;
-//   disc.style.top = `-12vh`;
-//   disc.style.zIndex = 2;
-//   disc.style.transition = "top 0.75s ease-out";
-
-//   boardRef.current.appendChild(disc);
-
-//   // Use exact offsetTop of the target cell relative to the board
-//   const targetTop = targetCell.offsetTop;
-  
-//   // Animate falling disc
-//   requestAnimationFrame(() => {
-//     disc.style.top = `${targetTop}px`;
-//   });
-
-//   disc.addEventListener("transitionend", () => {
-//     setTimeout(() => {
-//     disc.remove();
-//     onComplete();
-//   }, 1000);
-//   }, { once: true });
-// };
-
-
-
-
-// const animateDiscDrop = (col, row, color, onComplete) => {
-//   if (!boardRef.current) return;
-
-//   const board = boardRef.current;
-//   const targetCell = board.querySelector(`[data-row="${row}"][data-col="${col}"]`);
-//   if (!targetCell) return;
-
-//   const disc = document.createElement("div");
-//   disc.className = `disc ${color}`;
-
-//   // Start above the board, horizontally aligned with the column
-//   disc.style.left = `${targetCell.offsetLeft}px`;
-//   disc.style.top = `-12vh`; // above board
-
-//   board.appendChild(disc);
-
-//   // Animate drop to target cell position
-//   requestAnimationFrame(() => {
-//     disc.style.top = `${targetCell.offsetTop}px`;
-//   });
-
-//   disc.addEventListener(
-//     "transitionend",
-//     () => {
-//       disc.remove();
-//       onComplete();
-//     },
-//     { once: true }
-//   );
-// };
-
-
-// const animateDiscDrop = (col, row, color, newBoard, onComplete) => {
-//   if (!boardRef.current) return;
-
-//   const boardA = boardRef.current;
-
-//   // Get the cell where the disc will land
-//   const targetCell = boardA.querySelector(`[data-row="${row + 1}"][data-col="${col}"]`);
-//   if (!targetCell) return;
-
-//   // Create disc element
-//   const disc = document.createElement("div");
-//   disc.className = `disc ${color}`;
-  
-
-  
-
-//   // ROUNDED pixel values for perfect alignment
-//   const left = Math.round(targetCell.offsetLeft);
-//   const top = targetCell.offsetTop;
-//   const width = Math.round(targetCell.offsetWidth);
-//   const height = Math.round(targetCell.offsetHeight);
-
-//   // Set disc size and initial position above the board
-//   // disc.style.width = `${width}px`;
-//   // disc.style.height = `${height}px`;
-//   // disc.style.left = `${left}px`;
-//   // disc.style.top = `-20vh`; // start above board
-
-//   const size = targetCell.offsetWidth; // Add 2px buffer
-
-// // disc.style.width = `${size}px`;
-// // disc.style.height = `${size}px`;
-// disc.style.width = `${size}px`;
-// disc.style.height = `${size}px`;
-
-
-// // Adjust position back to center the slightly larger disc
-// disc.style.left = `${targetCell.offsetLeft + 0.5}px`;
-// disc.style.top = `-20vh`;
-// disc.style.zIndex = 5000;
-
-//   // Append to the board
-//   //boardA.appendChild(disc);
-
-//   // --- Overlay .board-background clone with transparent holes ---
-//   const originalBackground = boardA.querySelector(".board-background");
-//   let overlayBackground = null;
-
-//   if (originalBackground) {
-//     overlayBackground = originalBackground.cloneNode(true);
-
-//     // Create SVG mask
-//     const svgNS = "http://www.w3.org/2000/svg";
-//     const svg = document.createElementNS(svgNS, "svg");
-//     svg.setAttribute("width", "0");
-//     svg.setAttribute("height", "0");
-//     svg.style.position = "absolute";
-
-//     const mask = document.createElementNS(svgNS, "mask");
-//     mask.setAttribute("id", "boardMask");
-
-//     const rect = document.createElementNS(svgNS, "rect");
-//     rect.setAttribute("x", "0");
-//     rect.setAttribute("y", "0");
-//     rect.setAttribute("width", "100%");
-//     rect.setAttribute("height", "100%");
-//     rect.setAttribute("fill", "white");
-//     mask.appendChild(rect);
-
-//     // Mask hole setup (7 cols x 6 rows)
-//     const cellSize = 10; // vh
-//     const gap = 3; // vh
-//     const padding = 2; // vh
-//     const radius = cellSize / 2;
-
-//     for (let r = 0; r < 6; r++) {
-//       for (let c = 0; c < 7; c++) {
-//         const cx = padding + radius + c * (cellSize + gap);
-//         const cy = padding + radius + r * (cellSize + gap);
-
-//         const circle = document.createElementNS(svgNS, "circle");
-//         circle.setAttribute("cx", `${cx}vh`);
-//         circle.setAttribute("cy", `${cy}vh`);
-//         circle.setAttribute("r", `${radius}vh`);
-//         circle.setAttribute("fill", "black");
-//         mask.appendChild(circle);
-//       }
-//     }
-
-//     svg.appendChild(mask);
-//     document.body.appendChild(svg); // add to DOM once
-
-//     // Apply the SVG mask to the overlay
-//     overlayBackground.style.mask = "url(#boardMask)";
-//     overlayBackground.style.webkitMask = "url(#boardMask)";
-
-//     overlayBackground.style.position = "absolute";
-//     overlayBackground.style.top = "0";
-//     overlayBackground.style.left = "0";
-//     overlayBackground.style.width = "100%";
-//     overlayBackground.style.height = "100%";
-//     overlayBackground.style.zIndex = "10000";
-
-//     boardA.appendChild(overlayBackground);
-//   }
-
-//   //boardA.appendChild(overlayBackground);
-//   if (overlayBackground) {
-//   boardA.insertBefore(disc, overlayBackground);
-// } else {
-//   boardA.appendChild(disc); // fallback in case no overlay
-// }
-
-  
-//   // Animate drop to target cell
-//   requestAnimationFrame(() => {
-//     disc.getBoundingClientRect();
-//     disc.style.top = `${top + 0.5}px`;
-//   });
-
-//   // // Cleanup after animation completes
-//   // disc.addEventListener(
-//   //   "transitionend",
-//   //   () => {
-//   //     setBoard(newBoard);
-//   //     disc.remove();
-//   //     onComplete();
-//   //   },
-//   //   { once: true }
-//   // );
-//   // disc.addEventListener("transitionend", () => {
-//   //   setTimeout(() => {
-//   //   disc.remove();
-//   //   onComplete();
-//   // }, 1000);
-//   // }, { once: true });
-//   disc.addEventListener(
-//     "transitionend",
-//     () => {
-//       disc.style.zIndex = "";
-//       if (overlayBackground) {
-//         overlayBackground.remove();
-
-//         // Also remove SVG mask from DOM
-//         const svg = document.querySelector("svg");
-//         if (svg && svg.querySelector("#boardMask")) {
-//           svg.remove();
-//         }
-//       }
-//       setTimeout(() => {
-//         setBoard(newBoard);
-//         disc.remove();
-//         onComplete();
-//       }, 20); // small delay to avoid visual glitch
-//     },
-//     { once: true }
-//   );
-// };
-
-
-const animateDiscDrop = (col, row, color, newBoard, onComplete) => {
-  if (!boardRef.current) return;
-
-  const boardA = boardRef.current;
-
-  // Get the cell where the disc will land
-  const targetCell = boardA.querySelector(`[data-row="${row + 1}"][data-col="${col}"]`);
-  if (!targetCell) return;
-
-  // Create disc element
-  const disc = document.createElement("div");
-  disc.className = `disc ${color}`;
-  disc.style.position = "absolute";
-  disc.style.pointerEvents = "none";
-
-  // Use pixel dimensions for exact positioning
-  const size = targetCell.offsetWidth;
-  const leftPx = targetCell.offsetLeft;
-  const topPx = targetCell.offsetTop;
-
-  disc.style.width = `${size}px`;
-  disc.style.height = `${size}px`;
-  disc.style.left = `${leftPx+0.5}px`;
-  disc.style.top = `-${size}px`;  // start above the board
-  disc.style.zIndex = 5000; // below overlay
-
-  // Create transparent overlays for all cells
-  const cellElements = boardA.querySelectorAll(".cell");
-  const transparentCells = [];
-
-  const boardRect = boardA.getBoundingClientRect();
-
-  cellElements.forEach((cell) => {
-    const rect = cell.getBoundingClientRect();
-
-    const overlayCell = document.createElement("div");
-    overlayCell.className = "cell";  // reuse cell styles
-    overlayCell.style.position = "absolute";
-    overlayCell.style.pointerEvents = "none";
-    overlayCell.style.backgroundColor = "transparent"; // semi-transparent tint
-    overlayCell.style.opacity = "1"; // you can reduce this if desired
-    overlayCell.style.left = `${rect.left - boardRect.left}px`;
-    overlayCell.style.top = `${rect.top - boardRect.top}px`;
-    overlayCell.style.width = `${rect.width}px`;
-    overlayCell.style.height = `${rect.height}px`;
-    overlayCell.style.zIndex = 40000;
-
-    transparentCells.push(overlayCell);
-    boardA.appendChild(overlayCell);
-  });
-
-  // Create overlay clone with SVG mask holes
-  const originalBackground = boardA.querySelector(".board-background");
-  let overlayBackground = null;
-
-  if (originalBackground) {
-    overlayBackground = originalBackground.cloneNode(true);
-    overlayBackground.classList.add("board-background--holes");
-
-    // Create SVG mask (pixel units)
-    const svgNS = "http://www.w3.org/2000/svg";
-    const svg = document.createElementNS(svgNS, "svg");
-    svg.setAttribute("width", "0");
-    svg.setAttribute("height", "0");
-    svg.style.position = "absolute";
-
-    const mask = document.createElementNS(svgNS, "mask");
-    mask.setAttribute("id", "mask-board-discs");
-
-    // White rect fills whole area (visible)
-    const rect = document.createElementNS(svgNS, "rect");
-    rect.setAttribute("x", "0");
-    rect.setAttribute("y", "0");
-    rect.setAttribute("width", boardA.offsetWidth);
-    rect.setAttribute("height", boardA.offsetHeight);
-    rect.setAttribute("fill", "white");
-    mask.appendChild(rect);
-
-    // Add black circles as holes for each cell
-    const cells = boardA.querySelectorAll(".cell");
-    cells.forEach((cell) => {
-      const cellRect = cell.getBoundingClientRect();
-      const boardRect = boardA.getBoundingClientRect();
-      const cx = cellRect.left - boardRect.left + cellRect.width / 2;
-      const cy = cellRect.top - boardRect.top + cellRect.height / 2;
-      const r = cellRect.width / 2;
-
-      const circle = document.createElementNS(svgNS, "circle");
-      circle.setAttribute("cx", cx);
-      circle.setAttribute("cy", cy);
-      circle.setAttribute("r", r);
-      circle.setAttribute("fill", "black");
-      mask.appendChild(circle);
-    });
-
-    svg.appendChild(mask);
-    document.body.appendChild(svg);
-
-    // overlayBackground.style.mask = "url(#mask-board-discs)";
-    // overlayBackground.style.webkitMask = "url(#mask-board-discs)";
-    // overlayBackground.style.position = "absolute";
-    // overlayBackground.style.top = "0";
-    // overlayBackground.style.left = "0";
-    // overlayBackground.style.width = "100%";
-    // overlayBackground.style.height = "100%";
-    // overlayBackground.style.zIndex = 10000;
-    // overlayBackground.style.pointerEvents = "none";
-    // overlayBackground.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.3)";
-
-    overlayBackground.style.mask = "url(#mask-board-discs)";
-    overlayBackground.style.webkitMask = "url(#mask-board-discs)";
-    overlayBackground.style.position = "absolute";
-    overlayBackground.style.top = "0";
-    overlayBackground.style.left = "0";
-    overlayBackground.style.width = "100%";
-    overlayBackground.style.height = "100%";
-    overlayBackground.style.zIndex = 10000;
-    overlayBackground.style.pointerEvents = "none";
-    overlayBackground.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.3)";
-
-    boardA.appendChild(overlayBackground);
-  }
-
-  // Insert disc BELOW the overlay to keep it visible through holes
-  if (overlayBackground) {
-    boardA.insertBefore(disc, overlayBackground);
-  } else {
-    boardA.appendChild(disc);
-  }
-
-  // Animate drop by changing top position after forcing reflow
-  requestAnimationFrame(() => {
-    disc.getBoundingClientRect(); // force reflow
-    //disc.style.transition = "top 0.75s cubic-bezier(0.22, 1, 0.36, 1)";
-    disc.style.top = `${topPx + 0.5}px`;
-  });
-
-  // Cleanup on animation end
-  disc.addEventListener("transitionend", () => {
-    disc.style.zIndex = "";
-    if (overlayBackground) {
-      overlayBackground.remove();
-      const svg = document.querySelector("svg");
-      if (svg && svg.querySelector("#mask-board-discs")) {
-        svg.remove();
-      }
-    }
-
-    transparentCells.forEach(cell => cell.remove());
-
-    setBoard(newBoard);
-    setTimeout(() => {
-      //setBoard(newBoard);
-      disc.remove();
-      onComplete();
-    }, 20);
-  }, { once: true });
-};
-
-
-
-    const dropPiece = async (col, player) => {
-      try {
-        const response = await axios.post("http://localhost:8080/api/connectfour/move", {
-         player: player,
-         column: col,
-        },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+      const size = target.offsetWidth;
+      const startTop = -size; // start just above the top of the board
+      const endTop = target.offsetTop; // landing cell
+
+      // --- Animation tunables: change these to tweak how the disc falls ------
+      const SECONDS_PER_SQRT_PX = 0.024; // overall pace; higher = slower fall
+      const MIN_DURATION = 0.28; // shortest drop (top row), seconds
+      const MAX_DURATION = 0.75; // longest drop (bottom row), seconds
+      // Timing curve. Try these:
+      //   "cubic-bezier(0.3, 0.1, 0.4, 1)"  accelerate then soft landing (default)
+      //   "cubic-bezier(0.25, 0.4, 0.4, 1)" gentle, almost-constant speed
+      //   "cubic-bezier(0.5, 0, 0.75, 0)"   strong gravity (fast slam)
+      //   "ease-in"                          simple built-in acceleration
+      const EASING = "cubic-bezier(0.3, 0.1, 0.4, 1)";
+      // ----------------------------------------------------------------------
+      // Duration scales with sqrt(distance) so every disc falls under the same
+      // "gravity" - far drops take longer instead of just moving faster.
+      const distance = endTop - startTop;
+      const duration = Math.min(
+        MAX_DURATION,
+        Math.max(MIN_DURATION, SECONDS_PER_SQRT_PX * Math.sqrt(distance))
+      );
+
+      const disc = document.createElement("div");
+      disc.className = `disc falling ${colour}`;
+      disc.style.width = `${size}px`;
+      disc.style.height = `${size}px`;
+      disc.style.left = `${target.offsetLeft}px`;
+      disc.style.top = `${startTop}px`;
+      disc.style.transition = `top ${duration}s ${EASING}`;
+      fx.appendChild(disc);
+
+      let finished = false;
+      let safetyTimer = null;
+      const finish = () => {
+        if (finished) return;
+        finished = true;
+        if (safetyTimer !== null) {
+          clearTimeout(safetyTimer);
+        }
+        // Only commit the settled disc if the game wasn't reset mid-drop, otherwise a
+        // stale animation would overwrite the fresh (empty) board.
+        if (token === undefined || token === gameIdRef.current) {
+          // flushSync commits the settled disc to the DOM synchronously, so the static disc
+          // is painted before we remove the floating one. Without this there is a one-frame
+          // gap where neither exists, flashing the empty white hole.
+          flushSync(() => setBoard(newBoard));
+        }
+        if (disc.parentNode) {
+          disc.parentNode.removeChild(disc);
+        }
+        resolve();
+      };
+
+      requestAnimationFrame(() => {
+        disc.getBoundingClientRect(); // force reflow so the transition runs
+        disc.style.top = `${endTop}px`;
       });
 
-        const newBoard = response.data.board;
-        const row = drop(newBoard, player, col);
-        await new Promise(resolve => {
-              animateDiscDrop(col, row, player, newBoard, () => {
-                //setBoard(newBoard);
-                resolve();
-              });
-            });
-      } catch (error) {
-        console.error('Error during computation:', error);
-        alert('Something went wrong!');
+      disc.addEventListener("transitionend", finish, { once: true });
+      // Safety net in case transitionend does not fire (e.g. tab backgrounded).
+      safetyTimer = setTimeout(finish, duration * 1000 + 300);
+    });
+
+  const checkWinner = async () => {
+    try {
+      const response = await axios.get(`${API_BASE}/winner`);
+      return response.data || null;
+    } catch (error) {
+      console.error("Error fetching winner", error);
+      return null;
+    }
+  };
+
+  // After a disc settles: record the move (advances the turn) and end the game if it is over.
+  // setWinner and onMovePlayed are batched into one render, so the AI effect sees the final
+  // gameOver value and never replies on top of a winning move.
+  const settle = async (newBoard) => {
+    const winner = await checkWinner();
+    if (winner) {
+      setWinner(winner);
+    } else if (isBoardFull(newBoard)) {
+      setWinner("draw");
+    }
+    onMovePlayed();
+  };
+
+  const handleColumnClick = async (col) => {
+    if (busyRef.current || gameOver) return;
+    if (board[0][col] !== null) return; // column full
+    const moverColour = mode === "pvp" ? currentTurn : humanColour;
+    if (mode === "pve" && currentTurn !== humanColour) return;
+
+    const startGameId = gameId;
+    busyRef.current = true;
+    setIsBusy(true);
+    try {
+      const response = await axios.post(
+        `${API_BASE}/move`,
+        { player: moverColour, column: col },
+        { headers: { "Content-Type": "application/json", Accept: "application/json" } }
+      );
+      const newBoard = response.data.board;
+      await animateDrop(col, moverColour, newBoard, startGameId);
+      if (startGameId === gameIdRef.current) {
+        await settle(newBoard);
       }
-    };
-  
-
-
-    const bestMove = async (player) => {
-      //setPlayer(player === "red" ? "yellow" : "red");
-      const newPlayer = player === "red" ? "yellow" : "red";
-      //setPlayer(newPlayer);
-      //isLoadingScreenOpen.current = true;
-      setLoadingScreenOpen(true);
-      
-      
-      console.log("loading screen: " + isLoadingScreenOpen);
-      try {
-        const response = await axios.post("http://localhost:8080/api/connectfour/compute", {
-         player: player
-        });
-        const col = response.data.column;
-        const newBoard = response.data.board;
-        const row = drop(newBoard, player, col);
-        setLoadingScreenOpen(false);
-        await new Promise(resolve => {
-              animateDiscDrop(col, row, player, newBoard, () => {
-                //setBoard(newBoard);
-                resolve();
-              });
-            });
-        //setIsScreenFrozen(false);
-        console.log(board);
-        //isLoadingScreenOpen.current = false;
-        
-        console.log("loading screen: " + isLoadingScreenOpen);
-      } catch (error) {
-        console.error('Error during computation:', error);
-        alert('Something went wrong!');
-      } finally {
-        console.log("done");
-      }
-    };
-
-    const place = async (col, player) => {
-      if (!isLoadingScreenOpen) {
-        // Prevents playing a full column
-        if (board[0][col] !== null) {
-          return;
-        }
-        await dropPiece(col, player);
-        if (isWinScreenOpen) {
-          return;
-        }
-        setIsScreenFrozen(true);
-        await bestMove(player === "red" ? "yellow" : "red");
-        //console.log(board);
+    } catch (error) {
+      console.error("Error making move", error);
+    } finally {
+      if (gameIdRef.current === startGameId) {
+        busyRef.current = false;
+        setIsBusy(false);
       }
     }
-  
+  };
+
+  // Drives the AI whenever it is the AI's turn (including the opening move when the human is yellow).
+  useEffect(() => {
+    if (mode !== "pve" || gameOver) return;
+    if (currentTurn !== aiColour) return;
+    if (busyRef.current) return;
+
+    const startGameId = gameId;
+    busyRef.current = true;
+    setIsBusy(true);
+    setIsThinking(true);
+
+    (async () => {
+      try {
+        const response = await axios.post(`${API_BASE}/compute`, {
+          player: aiColour,
+          difficulty,
+        });
+        if (startGameId !== gameIdRef.current) return; // reset happened mid-think
+        const col = response.data.column;
+        const newBoard = response.data.board;
+        await animateDrop(col, aiColour, newBoard, startGameId);
+        if (startGameId !== gameIdRef.current) return;
+        await settle(newBoard);
+      } catch (error) {
+        console.error("Error computing AI move", error);
+      } finally {
+        if (gameIdRef.current === startGameId) {
+          setIsThinking(false);
+          busyRef.current = false;
+          setIsBusy(false);
+        }
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameId, currentTurn, mode, aiColour, gameOver]);
+
+  const inputLocked =
+    gameOver || isThinking || busyRef.current || (mode === "pve" && currentTurn !== humanColour);
 
   return (
-   
-    <div className="board-grid" ref={boardRef}>
-      {board.map((row, rowIndex) => (
-        row.map((cell, colIndex) => (
-          <div
-            key={`${rowIndex}-${colIndex}`}
-            className={`cell ${cell || ""}`}
-            data-row={rowIndex}
-            data-col={colIndex}
-            onClick={() => {
-              //dropPiece(colIndex, player);
-              //console.log(player);  
-              //setLoadingScreenOpen(true);
-              if (!frozenScreen) {
-                frozenScreen = true;;
-                place(colIndex, player);
-                frozenScreen = false;
-                
-                //drop('red', 3);
-                //console.log(board);
-                //drop('yellow', 3);
-                //console.log(board);
-              }
-              //bestMove();
-              //setLoadingScreenOpen(false);
-              
-            }}
-          ></div>
-        ))
-      ))}
-       <div className="board-background">
-      <LoadingScreen isOpen={isLoadingScreenOpen}/>
-    </div></div>
-);
+    <div className="board" ref={boardRef}>
+      <div className="disc-layer" ref={discLayerRef}>
+        {board.map((row, r) =>
+          row.map((cell, c) => (
+            <div key={`${r}-${c}`} className="hole" data-r={r} data-c={c}>
+              {cell && <div className={`disc-static ${cell}`} />}
+            </div>
+          ))
+        )}
+      </div>
 
+      {/* Falling discs are appended here imperatively. React never reconciles this layer's
+          children, so manual DOM writes can't clash with React (which caused the glitch). */}
+      <div className="fx-layer" ref={fxLayerRef} aria-hidden="true" />
 
-}
+      <div className="grid-overlay" aria-hidden="true" />
+
+      <div className="click-layer">
+        {Array.from({ length: COLS }).map((_, c) => (
+          <button
+            key={c}
+            type="button"
+            className="column-button"
+            aria-label={`Drop in column ${c + 1}`}
+            disabled={inputLocked || board[0][c] !== null}
+            onClick={() => handleColumnClick(c)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
 
 export default Board;
-
-
-// import { useRef } from "react";
-// import axios from "axios";
-// import './Board.css';
-// import LoadingScreen from '../LoadingScreen/LoadingScreen';
-
-// const Board = ({ board, setBoard, player, setPlayer }) => {
-//   const isLoadingScreenOpen = useRef(false);
-//   const animationRef = useRef(null);
-//   const boardRef = useRef(null);
-
-//   const getDropRow = (oldBoard, newBoard, col) => {
-//     for (let row = oldBoard.length - 1; row >= 0; row--) {
-//       if (oldBoard[row][col] !== newBoard[row][col]) {
-//         return row;
-//       }
-//     }
-//     return -1;
-//   };
-
-//   const animateDiscDrop = (col, row, color, onComplete) => {
-//     if (!boardRef.current) return;
-
-//     const firstCell = boardRef.current.querySelector(`[data-row="0"][data-col="${col}"]`);
-//     if (!firstCell) return;
-
-//     const disc = document.createElement("div");
-//     disc.className = `disc ${color}`;
-
-//     const cellSize = firstCell.offsetHeight;
-//     const gapSize = parseFloat(getComputedStyle(boardRef.current).gap) || 0;
-
-//     disc.style.position = "absolute";
-//     disc.style.width = `${cellSize}px`;
-//     disc.style.height = `${cellSize}px`;
-//     disc.style.borderRadius = "50%";
-//     disc.style.left = `${firstCell.offsetLeft}px`;
-//     disc.style.top = `-12vh`;
-//     disc.style.zIndex = 10;
-//     disc.style.transition = "top 0.5s ease-out";
-
-//     animationRef.current = disc;
-//     boardRef.current.appendChild(disc);
-
-//     const targetTop = row * (cellSize + gapSize);
-
-//     requestAnimationFrame(() => {
-//       disc.style.top = `${targetTop}px`;
-//     });
-
-//     disc.addEventListener("transitionend", () => {
-//       disc.remove();
-//       animationRef.current = null;
-//       onComplete();
-//     });
-//   };
-
-//   const dropPiece = async (col, player) => {
-//     const oldBoard = board.map(row => [...row]); // deep copy
-
-//     try {
-//       const response = await axios.post("http://localhost:8080/api/connectfour/move", {
-//         player: player,
-//         column: col,
-//       });
-
-//       const newBoard = response.data;
-//       const dropRow = getDropRow(oldBoard, newBoard, col);
-
-//       if (dropRow === -1) {
-//         console.error("Could not detect row of dropped piece");
-//         return;
-//       }
-
-//       await new Promise(resolve => {
-//         animateDiscDrop(col, dropRow, player, () => {
-//           setBoard(newBoard);
-//           setPlayer(player === "red" ? "yellow" : "red");
-//           resolve();
-//         });
-//       });
-
-//     } catch (error) {
-//       console.error("Error during dropPiece:", error);
-//       alert("Something went wrong!");
-//     }
-//   };
-
-//   const bestMove = async (player) => {
-//     const nextPlayer = player;
-//     isLoadingScreenOpen.current = true;
-
-//     try {
-//       const response = await axios.post("http://localhost:8080/api/connectfour/compute", {
-//         player: nextPlayer,
-//       });
-
-//       setBoard(response.data);
-//       setPlayer(player === "red" ? "yellow" : "red");
-
-//     } catch (error) {
-//       console.error("Error during bestMove:", error);
-//       alert("Something went wrong!");
-//     } finally {
-//       isLoadingScreenOpen.current = false;
-//     }
-//   };
-
-//   const place = async (col, player) => {
-//     if (!isLoadingScreenOpen.current) {
-//       if (board[0][col] !== null) {
-//         return; // Column full
-//       }
-
-//       await dropPiece(col, player);
-//       await bestMove(player === "red" ? "yellow" : "red");
-//     }
-//   };
-
-//   return (
-//     <div className="board" ref={boardRef}>
-//       {board.map((row, rowIndex) =>
-//         row.map((cell, colIndex) => (
-//           <div
-//             key={`${rowIndex}-${colIndex}`}
-//             className={`cell ${cell || ""}`}
-//             data-row={rowIndex}
-//             data-col={colIndex}
-//             onClick={() => place(colIndex, player)}
-//           ></div>
-//         ))
-//       )}
-//       <LoadingScreen isOpen={isLoadingScreenOpen.current} />
-//     </div>
-//   );
-// };
-
-// export default Board;

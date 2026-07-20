@@ -1,108 +1,117 @@
-/* .board {
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(7, 10vh);
-  grid-template-rows: repeat(6, 10vh);
-  gap: 3vh;
-  border: 5px solid #1d1c1c;
-  background-color: #008CBA;
-  padding: 2vh;
-  z-index: 500;
-} */
+.board {
+  --cell: clamp(42px, min(11.5vh, 12.5vw), 94px);
+  --gap: calc(var(--cell) * 0.16);
+  --pad: var(--gap);
+  --pitch: calc(var(--cell) + var(--gap));
 
-body {
-  font-family: Arial, sans-serif;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  margin: 0;
-  background-color: #2d2d30;
-}
-/* .board-background--holes {
-  pointer-events: none;  
-  z-index: 10000;
-  background-color: rgba(0, 136, 255, 0.7);
-  background-color: #008CBA;
-} */
-
-.board-container {
   position: relative;
-}
-.board-grid {
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(7, 10vh);
-  grid-template-rows: repeat(6, 10vh);
-  gap: 3vh;
-  padding: 2vh;
-  z-index: 0;
+  width: calc(7 * var(--cell) + 8 * var(--gap));
+  height: calc(6 * var(--cell) + 7 * var(--gap));
+  background: var(--board-blue);
+  border: 6px solid #14171c;
+  border-radius: 18px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+  overflow: hidden; /* disc emerges from the top slot instead of floating above the board */
 }
 
-/* .board-background {
+/* Bottom layer: white "holes" plus any settled discs. */
+.disc-layer {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  border: 5px solid #1d1c1c;
-  background-color: #008CBA;
-  z-index: 2;
-} */
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(7, var(--cell));
+  grid-template-rows: repeat(6, var(--cell));
+  gap: var(--gap);
+  padding: var(--pad);
+}
 
-.cell {
-  position: relative;
-  width: 10vh;
-  height: 10vh;
+.hole {
+  width: var(--cell);
+  height: var(--cell);
   border-radius: 50%;
-  background-color: #f1f1f1;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  cursor: pointer;
-  box-sizing: border-box;
-  z-index: 3; 
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  background: var(--cell-empty);
+  box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.28);
+  position: relative;
 }
-.board-background {
+
+.disc-static {
   position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background-color: #008CBA;
-  z-index: 2;
+  inset: 0;
+  border-radius: 50%;
 }
 
-.board-background--holes {
-  /* Overlay clone with holes */
-  background-color: #008CBA;
+/* Animation layer: holds the falling disc, above the white holes and below the blue grid. */
+.fx-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
   pointer-events: none;
-  z-index: 10000;
-  
 }
 
+/* Top layer: the blue board with circular holes punched out, so discs show through the slots. */
+.grid-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: var(--board-blue);
+  border-radius: 12px;
+  -webkit-mask-image: radial-gradient(circle at center, #0000 calc(var(--cell) / 2 - 0.5px), #000 calc(var(--cell) / 2));
+  mask-image: radial-gradient(circle at center, #0000 calc(var(--cell) / 2 - 0.5px), #000 calc(var(--cell) / 2));
+  -webkit-mask-size: var(--pitch) var(--pitch);
+  mask-size: var(--pitch) var(--pitch);
+  -webkit-mask-position: calc(var(--pad) - var(--gap) / 2) calc(var(--pad) - var(--gap) / 2);
+  mask-position: calc(var(--pad) - var(--gap) / 2) calc(var(--pad) - var(--gap) / 2);
+  -webkit-mask-repeat: repeat;
+  mask-repeat: repeat;
+}
+
+/* Click targets: one full-height button per column, above every other layer. */
+.click-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: repeat(7, var(--cell));
+  column-gap: var(--gap);
+  padding: var(--pad);
+  align-items: stretch;
+}
+
+.column-button {
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: calc(var(--cell) / 2);
+  transition: background 0.15s ease;
+}
+
+.column-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.column-button:disabled {
+  cursor: default;
+}
+
+/* The falling disc: sits above the white holes (z 1) but below the blue overlay (z 2). */
 .disc {
   position: absolute;
+  z-index: 1;
   border-radius: 50%;
-  transition: top 1.0s cubic-bezier(0.22, 1, 0.36, 1);
-  pointer-events: none;
-}
-/* .disc {
-  position: absolute;
-  width: 10vh;
-  height: 10vh;
-  border-radius: 50%;
-  box-sizing: border-box;
-  background-color: inherit;
-  transition: top 1.75s cubic-bezier(0.22, 1, 0.36, 1);
-  z-index: 2;
-  pointer-events: none;
-} */
-.cell.clicked {
-  pointer-events: none;
-}
-.red {
-  background-color: red;
-}
-.yellow {
-  background-color: yellow;
+  box-shadow: inset 0 -3px 6px rgba(0, 0, 0, 0.28);
 }
 
+/* The falling disc's transition (duration + easing) is set in Board.jsx's
+   animateDrop so the duration can scale with the drop distance. Tweak it there. */
+
+.red {
+  background: radial-gradient(circle at 35% 30%, #ff6b6b, #d40000 70%);
+}
+
+.yellow {
+  background: radial-gradient(circle at 35% 30%, #ffe27a, #f2c200 70%);
+}
