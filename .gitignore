@@ -29,3 +29,15 @@ backend/.vscode
 frontend/node_modules/
 scripts/data/
 scripts/python/__pycache__/
+
+# Java build output (any module)
+target/
+*.class
+
+# Environment / secrets
+.env
+.env.local
+.env.*.local
+
+# OS files
+Thumbs.db
