@@ -1,5 +1,7 @@
 package com.connectfour.game;
 
+import java.util.Random;
+
 import com.connectfour.game.OpeningBook.BookType;
 
 /**
@@ -12,9 +14,18 @@ import com.connectfour.game.OpeningBook.BookType;
 
 public class Solver {
 
+    // Difficulty bounds exposed to the API layer (inclusive)
+    public static final int MIN_DIFFICULTY = 1;
+    public static final int MAX_DIFFICULTY = 5;
+
+    // Score returned for a win in the depth-limited difficulty search; far larger than any
+    // heuristic value so wins/losses always dominate.
+    private static final int WIN_SCORE = 1_000_000;
+
     private final int TRANSPOSITION_TABLE_SIZE = 1 << 23;
     private final BookType BOOK = BookType.EIGHT_MOVES;
     private final int[] MOVE_ORDER = generateMoveOrder();
+    private final Random random = new Random();
 
     private TranspositionTable table;
     private OpeningBook openingBook;
@@ -37,13 +48,13 @@ public class Solver {
      * @param player A Player enum reprenting the current player
      * @return An int representing the column that is the best move
      */
-    public int findBestMove(BitBoard board, Player player) {
+    public int findBestMove(Bitboard board, Player player) {
 
         int bestMove = -1;
         int bestScore = Integer.MIN_VALUE + 1;
 
         if (board.canWinNext(player)) {
-            for (int col = 0; col < BitBoard.BOARD_WIDTH; col++) {
+            for (int col = 0; col < Bitboard.BOARD_WIDTH; col++) {
                 if (board.isColumnFull(col)) {
                     continue;
                 }
@@ -60,8 +71,8 @@ public class Solver {
         long possibleMoves = board.possibleNonLosingMoves(player);
 
         MoveSorter moves = new MoveSorter();
-        for (int i = BitBoard.BOARD_WIDTH - 1; i >= 0; i--) {
-            long move = possibleMoves & BitBoard.columnMask(MOVE_ORDER[i]);
+        for (int i = Bitboard.BOARD_WIDTH - 1; i >= 0; i--) {
+            long move = possibleMoves & Bitboard.getColumnMask(MOVE_ORDER[i]);
             if (move != 0) {
                 moves.add(move, board.moveScore(move, player));
             }
@@ -94,9 +105,203 @@ public class Solver {
         return bestMove;
     }
 
+    /**
+     * Finds the best column to play at a given difficulty. Difficulty controls how far ahead the AI
+     * looks and how often it blunders, so the strength scales in a way a human can feel:
+     *
+     * <ul>
+     *   <li>{@link #MAX_DIFFICULTY}: perfect play (opening book + exact solver) - effectively
+     *       unbeatable.</li>
+     *   <li>Lower levels: no opening book, a shallow depth-limited search, and a chance to play a
+     *       random move instead. Shorter look-ahead means the AI can be out-planned, and the blunder
+     *       chance means it will sometimes miss blocks entirely.</li>
+     * </ul>
+     *
+     * An obvious immediate win is always taken, at every difficulty.
+     *
+     * @param board A Bitboard of the current game
+     * @param player The player to move
+     * @param difficulty A value in [{@link #MIN_DIFFICULTY}, {@link #MAX_DIFFICULTY}]
+     * @return The column index of the chosen move
+     */
+    public int findBestMove(Bitboard board, Player player, int difficulty) {
+        difficulty = Math.max(MIN_DIFFICULTY, Math.min(MAX_DIFFICULTY, difficulty));
+
+        // An obvious immediate win is always taken, at every difficulty.
+        int winningColumn = findWinningColumn(board, player);
+        if (winningColumn != -1) {
+            return winningColumn;
+        }
+
+        // Top difficulty plays perfectly: opening book + exact iterative deepening.
+        if (difficulty >= MAX_DIFFICULTY) {
+            return findBestMove(board, player);
+        }
+
+        // Lower difficulties sometimes just blunder (more often the easier the level).
+        if (random.nextDouble() < blunderChance(difficulty)) {
+            return randomLegalColumn(board);
+        }
+
+        // Otherwise, a depth-limited look-ahead with a heuristic evaluation (no opening book),
+        // so a shallow depth genuinely limits how well the AI plays.
+        int lookahead = searchDepth(difficulty);
+        int bestMove = -1;
+        int bestScore = Integer.MIN_VALUE;
+
+        for (int i = 0; i < Bitboard.BOARD_WIDTH; i++) {
+            int col = MOVE_ORDER[i];
+            if (board.isColumnFull(col)) {
+                continue;
+            }
+            board.placeDisc(col, player);
+            int score = -negamaxDepth(board, Player.opponent(player), lookahead, -WIN_SCORE, WIN_SCORE);
+            board.removeDisc(col);
+            if (score > bestScore) {
+                bestScore = score;
+                bestMove = col;
+            }
+        }
+
+        if (bestMove == -1) {
+            return randomLegalColumn(board);
+        }
+        return bestMove;
+    }
+
+    /**
+     * A depth-limited negamax search that uses a heuristic evaluation at its horizon. Unlike the
+     * exact search it does NOT use the opening book or transposition table, so the depth limit truly
+     * caps how far ahead the AI can plan (which is what makes lower difficulties beatable).
+     *
+     * @param board The current position
+     * @param player The player to move
+     * @param depth Remaining plies of look-ahead
+     * @param alpha Alpha bound
+     * @param beta Beta bound
+     * @return The negamax score from {@code player}'s perspective
+     */
+    private int negamaxDepth(Bitboard board, Player player, int depth, int alpha, int beta) {
+        if (board.checkDraw()) {
+            return 0;
+        }
+        if (depth <= 0) {
+            return board.heuristicScore(player);
+        }
+        // The side to move can win immediately - best possible outcome (prefer sooner wins).
+        if (board.canWinNext(player)) {
+            return WIN_SCORE - board.getMoveCount();
+        }
+
+        int best = Integer.MIN_VALUE;
+        for (int i = 0; i < Bitboard.BOARD_WIDTH; i++) {
+            int col = MOVE_ORDER[i];
+            if (board.isColumnFull(col)) {
+                continue;
+            }
+            board.placeDisc(col, player);
+            int score = -negamaxDepth(board, Player.opponent(player), depth - 1, -beta, -alpha);
+            board.removeDisc(col);
+            if (score > best) {
+                best = score;
+            }
+            if (best > alpha) {
+                alpha = best;
+            }
+            if (alpha >= beta) {
+                break;
+            }
+        }
+        return best;
+    }
+
+    /**
+     * Returns the column of an immediate winning move for the player, or -1 if there is none.
+     *
+     * @param board The current position
+     * @param player The player to move
+     * @return A winning column, or -1
+     */
+    private int findWinningColumn(Bitboard board, Player player) {
+        if (!board.canWinNext(player)) {
+            return -1;
+        }
+        for (int col = 0; col < Bitboard.BOARD_WIDTH; col++) {
+            if (board.isColumnFull(col)) {
+                continue;
+            }
+            board.placeDisc(col, player);
+            boolean win = board.checkWinner(player);
+            board.removeDisc(col);
+            if (win) {
+                return col;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Picks a uniformly random playable column.
+     *
+     * @param board The current position
+     * @return A non-full column index (0 if the board is full)
+     */
+    private int randomLegalColumn(Bitboard board) {
+        int[] legal = new int[Bitboard.BOARD_WIDTH];
+        int count = 0;
+        for (int col = 0; col < Bitboard.BOARD_WIDTH; col++) {
+            if (!board.isColumnFull(col)) {
+                legal[count] = col;
+                count++;
+            }
+        }
+        if (count == 0) {
+            return 0;
+        }
+        return legal[random.nextInt(count)];
+    }
+
+    /**
+     * Plies of look-ahead for a given (below-max) difficulty. Higher means stronger play. Tune
+     * these to shift how challenging each level feels.
+     *
+     * @param difficulty A value in [{@link #MIN_DIFFICULTY}, {@link #MAX_DIFFICULTY} - 1]
+     * @return The number of look-ahead plies
+     */
+    private int searchDepth(int difficulty) {
+        if (difficulty == 1) {
+            return 0;
+        } else if (difficulty == 2) {
+            return 2;
+        } else if (difficulty == 3) {
+            return 4;
+        } else {
+            return 8;
+        }
+    }
+
+    /**
+     * Probability of playing a random move instead of searching, for a given (below-max)
+     * difficulty. Higher means the AI blunders more often (easier). Tune to taste.
+     *
+     * @param difficulty A value in [{@link #MIN_DIFFICULTY}, {@link #MAX_DIFFICULTY} - 1]
+     * @return A probability in [0, 1]
+     */
+    private double blunderChance(int difficulty) {
+        if (difficulty == 1) {
+            return 0.45;
+        } else if (difficulty == 2) {
+            return 0.25;
+        } else if (difficulty == 3) {
+            return 0.10;
+        } else {
+            return 0.0;
+        }
+    }
 
 
-    public int solve(BitBoard board, Player player) {
+
+    public int solve(Bitboard board, Player player) {
         if (board.checkDraw()) {
             return 0;
         } else if (board.canWinNext(player)) {
@@ -104,7 +309,7 @@ public class Solver {
         }
         
         // Gets score from opening book
-        if (BitBoard.BOARD_HEIGHT * BitBoard.BOARD_WIDTH - board.getSpacesLeft() <= BOOK.getMoveLength()) {
+        if (Bitboard.BOARD_HEIGHT * Bitboard.BOARD_WIDTH - board.getSpacesLeft() <= BOOK.getMoveLength()) {
             long key = board.key();
             int score = openingBook.get(key);
             if (score != Byte.MIN_VALUE) {
@@ -145,7 +350,7 @@ public class Solver {
      * @param beta An int of the higher bound score
      * @return An int representing the score of that position
      */
-    private final int negamax(BitBoard board, Player player, int alpha, int beta) {
+    private final int negamax(Bitboard board, Player player, int alpha, int beta) {
 
          // Checks if the position is drawn
         if (board.checkDraw()) {
@@ -179,8 +384,8 @@ public class Solver {
 
         // Gets value from the transposition table
         if (value != 0) {
-            if (value > BitBoard.MAX_SCORE - BitBoard.MIN_SCORE + 1) {
-                min = value + 2 * BitBoard.MIN_SCORE - BitBoard.MAX_SCORE - 2;
+            if (value > Bitboard.MAX_SCORE - Bitboard.MIN_SCORE + 1) {
+                min = value + 2 * Bitboard.MIN_SCORE - Bitboard.MAX_SCORE - 2;
                 if (alpha < min) {
                     alpha = min;
                     if (alpha >= beta) {
@@ -188,7 +393,7 @@ public class Solver {
                     }
                 }
             } else {
-                max = value + BitBoard.MIN_SCORE - 1;
+                max = value + Bitboard.MIN_SCORE - 1;
                 if (beta > max) {
                     beta = max;
                     if (alpha >= beta) {
@@ -199,12 +404,12 @@ public class Solver {
         }
 
         MoveSorter moves = new MoveSorter();
-        for (int i = BitBoard.BOARD_WIDTH - 1; i >= 0; i--) {
-            long move = possible & BitBoard.columnMask(MOVE_ORDER[i]);
+        for (int i = Bitboard.BOARD_WIDTH - 1; i >= 0; i--) {
+            long move = possible & Bitboard.getColumnMask(MOVE_ORDER[i]);
             if (move != 0) {
                 moves.add(move, board.moveScore(move, player));
             }
-        } 
+        }
 
         long next = moves.getNext();
 
@@ -217,7 +422,7 @@ public class Solver {
             next = moves.getNext();
 
             if (score >= beta) {
-                table.put(key, (byte) (score + BitBoard.MAX_SCORE - 2 * BitBoard.MIN_SCORE + 2));
+                table.put(key, (byte) (score + Bitboard.MAX_SCORE - 2 * Bitboard.MIN_SCORE + 2));
                 return score;
             }
 
@@ -226,7 +431,7 @@ public class Solver {
             }
         }
 
-        table.put(key, (byte) (alpha - BitBoard.MIN_SCORE + 1));
+        table.put(key, (byte) (alpha - Bitboard.MIN_SCORE + 1));
         return alpha;
     }
 
@@ -236,10 +441,10 @@ public class Solver {
      * {3, 4, 2, 5, 1, 6, 0}
      */
     public static int[] generateMoveOrder() {
-        int[] moveOrder = new int[BitBoard.BOARD_WIDTH];
-        int midpoint = BitBoard.BOARD_WIDTH / 2;
+        int[] moveOrder = new int[Bitboard.BOARD_WIDTH];
+        int midpoint = Bitboard.BOARD_WIDTH / 2;
 
-        for (int i = 0; i < BitBoard.BOARD_WIDTH; i++) {
+        for (int i = 0; i < Bitboard.BOARD_WIDTH; i++) {
             if (i == 0) {
                 moveOrder[i] = midpoint;
             } else if (i % 2 == 0) {

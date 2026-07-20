@@ -17,7 +17,7 @@ package com.connectfour.game;
  * @author Brayden T
  */
 
-public class BitBoard {
+public class Bitboard {
     // Board constants
     public static final int BOARD_HEIGHT = 6;
     public static final int BOARD_WIDTH = 7;
@@ -42,7 +42,7 @@ public class BitBoard {
     /**
      * Default constructor initializing an empty board
      */
-    public BitBoard() {
+    public Bitboard() {
         clear();
     }
 
@@ -51,7 +51,7 @@ public class BitBoard {
      * 
      * @param bitBoard A Bitboard instance that will be copied from
      */
-    public BitBoard(BitBoard bitBoard) {
+    public Bitboard(Bitboard bitBoard) {
         this.redBoard = bitBoard.redBoard;
         this.yellowBoard = bitBoard.yellowBoard;
         this.mask = bitBoard.mask;
@@ -450,6 +450,34 @@ public class BitBoard {
      */
     public int getMoveCount() {
         return BOARD_HEIGHT * BOARD_WIDTH - spacesLeft;
+    }
+
+    /**
+     * A heuristic evaluation of the position from the given player's perspective (positive is good
+     * for that player). Used by the depth-limited difficulty search to judge non-terminal positions
+     * once its look-ahead horizon is reached. It rewards having more open winning squares (threats)
+     * than the opponent, with a small bonus for central control.
+     *
+     * @param player The player to evaluate the position for
+     * @return A heuristic score; higher is better for the player
+     */
+    public int heuristicScore(Player player) {
+        Player opponent = Player.opponent(player);
+        int threatDifference = Long.bitCount(winningPosition(player))
+                - Long.bitCount(winningPosition(opponent));
+        int centreDifference = centreCount(player) - centreCount(opponent);
+        return threatDifference * 10 + centreDifference * 2;
+    }
+
+    /**
+     * Counts how many of the given player's discs are in the centre column.
+     *
+     * @param player The player to count discs for
+     * @return The number of the player's discs in the centre column
+     */
+    private int centreCount(Player player) {
+        long playerBoard = (player == Player.RED) ? redBoard : yellowBoard;
+        return Long.bitCount(playerBoard & COLUMN_MASK[BOARD_WIDTH / 2]);
     }
 
     /**

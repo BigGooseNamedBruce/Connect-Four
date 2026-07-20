@@ -25,19 +25,6 @@
   </properties>
 
 
-  <dependencyManagement>
-    <dependencies>
-      <dependency>
-        <groupId>org.junit</groupId>
-        <artifactId>junit-bom</artifactId>
-        <version>5.11.0</version>
-        <type>pom</type>
-        <scope>import</scope>
-      </dependency>
-
-    </dependencies>
-  </dependencyManagement>
-
   <dependencies>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
@@ -57,11 +44,6 @@
     </dependency>
     <dependency>
         <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-devtools</artifactId>
-        <scope>runtime</scope>
-    </dependency>
-    <dependency>
-        <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter</artifactId>
     </dependency>
     <dependency>
@@ -75,26 +57,28 @@
         <artifactId>jackson-databind</artifactId>
     </dependency> -->
 
-    <!-- SLF4J API -->
-    <dependency>
-        <groupId>org.slf4j</groupId>
-        <artifactId>slf4j-api</artifactId>
-        <version>2.0.9</version>
-    </dependency>
-
-    <!-- Logback implementation -->
-    <dependency>
-        <groupId>ch.qos.logback</groupId>
-        <artifactId>logback-classic</artifactId>
-        <version>1.4.11</version>
-        <scope>test</scope> <!-- Usually for tests only, remove scope if needed in main code -->
-    </dependency>
-    
+    <!-- SLF4J + Logback come (at mutually-compatible versions) from spring-boot-starter's logging
+         starter. Do NOT pin them here: overriding only logback-classic left it out of sync with the
+         Boot-managed logback-core and caused NoSuchMethodError (CachingDateFormatter). -->
 
     <dependency>
       <groupId>it.unimi.dsi</groupId>
       <artifactId>fastutil</artifactId>
       <version>8.5.9</version> <!-- Check for latest version -->
+    </dependency>
+
+    <!-- JMH: Java Microbenchmark Harness (used by the 'benchmark' profile) -->
+    <dependency>
+      <groupId>org.openjdk.jmh</groupId>
+      <artifactId>jmh-core</artifactId>
+      <version>1.37</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.openjdk.jmh</groupId>
+      <artifactId>jmh-generator-annprocess</artifactId>
+      <version>1.37</version>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 
@@ -114,16 +98,24 @@
         <plugin>
           <artifactId>maven-compiler-plugin</artifactId>
           <version>3.13.0</version>
+          <configuration>
+            <!-- Run JMH's annotation processor so it generates META-INF/BenchmarkList during
+                 compilation. Without this the benchmark fails at runtime with
+                 "Unable to find the resource: /META-INF/BenchmarkList". -->
+            <annotationProcessorPaths>
+              <path>
+                <groupId>org.openjdk.jmh</groupId>
+                <artifactId>jmh-generator-annprocess</artifactId>
+                <version>1.37</version>
+              </path>
+            </annotationProcessorPaths>
+          </configuration>
         </plugin>
         <plugin>
           <artifactId>maven-surefire-plugin</artifactId>
-          <version>3.3.0</version>
-          <configuration>
-            <excludedTags>performance</excludedTags>
-            <!-- <includes>
-              <include>**/*PerformanceTest.java</include>
-            </includes> -->
-          </configuration>
+          <!-- No version: let the Spring Boot parent manage it so the JUnit Platform launcher
+               matches the engine (a newer pinned surefire forced an incompatible launcher and
+               caused NoSuchMethodError). -->
         </plugin>
         <plugin>
           <artifactId>maven-jar-plugin</artifactId>
@@ -153,4 +145,42 @@
       </plugins>
     </pluginManagement>
   </build>
+
+  <profiles>
+    <!--
+      Runs the JMH benchmarks. The benchmark sources live in src/test/java, so compile them first,
+      then launch JMH:
+
+        mvn -Pbenchmark clean test-compile exec:exec
+
+      Note: exec:exec (a real, separate JVM) is required rather than exec:java (in-process). JMH
+      forks a child JVM per benchmark and derives its classpath from the launcher's
+      java.class.path; only a genuinely launched JVM exposes the full test classpath, otherwise the
+      fork fails with "Could not find or load main class org.openjdk.jmh.runner.ForkedMain".
+      A single run reports every testSet separately; to isolate one, narrow the @Param list in
+      SolverBenchmark.
+    -->
+    <profile>
+      <id>benchmark</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>exec-maven-plugin</artifactId>
+            <version>3.1.0</version>
+            <configuration>
+              <executable>${java.home}/bin/java</executable>
+              <classpathScope>test</classpathScope>
+              <arguments>
+                <argument>-classpath</argument>
+                <classpath/>
+                <argument>org.openjdk.jmh.Main</argument>
+                <argument>com.connectfour.benchmark.SolverBenchmark</argument>
+              </arguments>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>

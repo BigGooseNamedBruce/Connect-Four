@@ -4,12 +4,12 @@ import java.util.Scanner;
 
 public class ConnectFour {
 
-    private BitBoard board;
+    private Bitboard board;
     private Solver solver;
     private char player;
 
     public ConnectFour() {
-        this.board = new BitBoard();
+        this.board = new Bitboard();
         this.solver = new Solver();
         this.player = 'r';
     }

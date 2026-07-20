@@ -4,6 +4,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -49,9 +50,16 @@ public class ConnectFourController {
         connectfourService.reset();
     }
 
+    @PostMapping("/undo")
+    public String[][] undo(@RequestParam(defaultValue = "1") int count) {
+        connectfourService.undo(count);
+        return connectfourService.toArray();
+    }
+
     @PostMapping("/compute")
     public ConnectFourResponse computeBestMove(@RequestBody PlayerRequest playerRequest) {
-        int bestMove = connectfourService.computerBestMove(playerRequest.getPlayer());
+        int bestMove = connectfourService.computerBestMove(
+                playerRequest.getPlayer(), playerRequest.getDifficulty());
         connectfourService.place(bestMove, playerRequest.getPlayer());
         String[][] board = connectfourService.toArray();
         return new ConnectFourResponse(board, bestMove);

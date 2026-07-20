@@ -5,7 +5,7 @@ import java.util.Scanner;
 public class Play {
     public static void main(String[] args){
 
-        // BitBoard board = new BitBoard();
+        // Bitboard board = new Bitboard();
         // Solver solver = new Solver();
         // char player = 'r';
         // Scanner input = new Scanner(System.in);

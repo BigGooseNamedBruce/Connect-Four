@@ -1,127 +1,118 @@
 package com.connectfour.game;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Stream;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.springframework.util.Assert;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.fail;
+class SolverTest {
 
-import java.util.Scanner;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import java.util.List;
-import java.nio.file.Path;
+    // One shared solver: the transposition table only ever stores valid bounds, so it is safe
+    // (and much faster than reloading the opening book) to reuse it across cases.
+    private static final Solver solver = new Solver();
 
-import com.connectfour.game.*;
+    private static Bitboard boardFrom(String moves) {
+        Bitboard board = new Bitboard();
+        board.load(moves);
+        return board;
+    }
 
-public class SolverTest {
+    private static Player toMove(String moves) {
+        // Red always starts; the side to move flips with every disc played.
+        return (moves.length() % 2 == 0) ? Player.RED : Player.YELLOW;
+    }
 
-    // BitBoard board = new BitBoard();;
-    // Solver solver =  new Solver(board);
-    // char player;
+    // The six Pascal Pons benchmark sets, spanning opening -> endgame and easy -> hard.
+    static final String[] TEST_SETS = {
+        "Test_L1_R1_Begin_Easy.txt",
+        "Test_L1_R2_Begin_Medium.txt",
+        "Test_L1_R3_Begin_Hard.txt",
+        "Test_L2_R1_Middle_Easy.txt",
+        "Test_L2_R2_Middle_Medium.txt",
+        "Test_L3_R1_End_Easy.txt",
+    };
+
+    // Positions sampled per file for the correctness suite - kept small so `mvn test` stays quick.
+    // The full per-file timing lives in the JMH benchmark (com.connectfour.benchmark.SolverBenchmark).
+    private static final int SAMPLE_PER_FILE = 20;
+
+    /** Feeds a sample of known positions from every test set with their expected exact scores. */
+    static Stream<Arguments> knownPositions() throws IOException {
+        List<Arguments> cases = new ArrayList<>();
+        for (String testSet : TEST_SETS) {
+            List<String> lines = Files.readAllLines(Path.of("src/test/resources", testSet));
+            int limit = Math.min(SAMPLE_PER_FILE, lines.size());
+            for (int i = 0; i < limit; i++) {
+                String line = lines.get(i).trim();
+                if (line.isEmpty()) {
+                    continue;
+                }
+                String[] parts = line.split(" ");
+                cases.add(Arguments.of(testSet, parts[0], Integer.parseInt(parts[1])));
+            }
+        }
+        return cases.stream();
+    }
+
+    @ParameterizedTest(name = "{0}: solve({1}) == {2}")
+    @MethodSource("knownPositions")
+    void solvesToExactScore(String testSet, String moves, int expectedScore) {
+        Bitboard board = boardFrom(moves);
+        assertEquals(expectedScore, solver.solve(board, toMove(moves)),
+                "wrong score in " + testSet + " for position " + moves);
+    }
 
     @Test
-    void testSolver() {
-        String filepath = "src/test/resources/Test_L1_R1_Begin_Easy.txt";
-        BitBoard board = new BitBoard();
-        Solver solver = new Solver();
-        Player player = Player.RED;
+    void takesImmediateVerticalWin() {
+        Bitboard board = new Bitboard();
+        board.placeDisc(3, Player.RED);
+        board.placeDisc(3, Player.RED);
+        board.placeDisc(3, Player.RED);
 
-        try {
-            Scanner scanner = new Scanner(new File(filepath));
+        assertEquals(3, solver.findBestMove(board, Player.RED));
+        assertEquals(3, solver.findBestMove(board, Player.RED, Solver.MIN_DIFFICULTY));
+        assertEquals(3, solver.findBestMove(board, Player.RED, Solver.MAX_DIFFICULTY));
+    }
 
-            while (scanner.hasNextLine()) {
+    @Test
+    void blocksOpponentsImmediateWinAtPerfectDifficulty() {
+        // Yellow threatens a vertical win in column 0; perfect play must block there.
+        // (Lower difficulties are intentionally allowed to miss the block so they are beatable.)
+        Bitboard board = new Bitboard();
+        board.placeDisc(0, Player.YELLOW);
+        board.placeDisc(0, Player.YELLOW);
+        board.placeDisc(0, Player.YELLOW);
 
-                String line = scanner.nextLine();
-                String[] parts = line.split(" ");
-                String moveOrder = parts[0];
-                int score = Integer.parseInt(parts[1]);
+        assertEquals(0, solver.findBestMove(board, Player.RED, Solver.MAX_DIFFICULTY));
+    }
 
-                for (int i = 0; i < moveOrder.length(); i++) {
-                    board.placeDisc(Character.getNumericValue(moveOrder.charAt(i)) - 1, player);
-                    player = Player.opponent(player);
-                } 
-
-                int testScore = solver.solve(board, player);
-                assertEquals(score, testScore, "I fail");
-
-                board.clear();
-                player = Player.RED;
-            }
-        } catch (FileNotFoundException fileNotFoundException) {
-            fail(filepath + " not found");
+    @Test
+    void everyDifficultyReturnsALegalColumn() {
+        Bitboard board = boardFrom("1234567123");
+        Player player = toMove("1234567123");
+        for (int difficulty = Solver.MIN_DIFFICULTY; difficulty <= Solver.MAX_DIFFICULTY; difficulty++) {
+            int move = solver.findBestMove(board, player, difficulty);
+            assertTrue(move >= 0 && move < Bitboard.BOARD_WIDTH,
+                    "illegal column " + move + " at difficulty " + difficulty);
         }
     }
 
-
-    public static void main(String[] args) throws Exception{
-        BitBoard board = new BitBoard();
-        Solver solver = new Solver();
-        long start = System.nanoTime(); 
-
-        int count = testNegamax("backend/src/test/resources/Test_L1_R3_Begin_Hard.txt", board, solver);
-        
-        //BitBoard board = new BitBoard();
-        //Solver solver = new Solver(board);
-        //board.load("444523"); //443523. 444523
-        //System.out.println(solver.findBestMove('r'));
-        
-        long end = System.nanoTime();
-        System.out.println("time: " + ((end - start) / 1000000.0) + "ms");
-        System.out.println("time: " + ((end - start) / 1000000.0 / count) + "ms/position");
-        System.out.println(count);
-    }
-
-    public static int testNegamax(String filename, BitBoard board, Solver solver) {
-        int count = 0;
-        File file = new File(filename);
-        
-        //char player = 'X';
-        Player player = Player.RED;
-        int wrong = 0;
-
-        try {
-            Scanner scanner = new Scanner(file);
-
-            while (scanner.hasNextLine()) {
-                count++;
-                String line = scanner.nextLine();
-                String[] parts = line.split(" ");
-                String moveOrder = parts[0];
-                int score = Integer.parseInt(parts[1]);
-
-                for (int i = 0; i < moveOrder.length(); i++) {
-                    //System.out.println(s.charAt(i));
-                    board.placeDisc(Character.getNumericValue(moveOrder.charAt(i)) - 1, player);
-                    player = Player.opponent(player);
-                }
-                
-
-                int testScore = solver.solve(board, player);
-                if (testScore == score) {
-                    System.out.println("True " + count);
-                    ;
-                } else {
-                    System.out.println("False: " + testScore + " != " + score + " " + count);
-                    wrong++;
-                }
-
-                board.clear();
-                player = Player.RED;
-                //break;
-                if (count >= 1000) {
-                    System.out.println("Wrong: " + wrong);
-                    return count;
-                }
-            }
-        } catch (FileNotFoundException fileNotFoundException) {
-            System.out.printf("%s not found", filename);
-        }
-        return count;
-
+    @Test
+    void difficultyIsClampedToValidRange() {
+        Bitboard board = new Bitboard();
+        int low = solver.findBestMove(board, Player.RED, -100);
+        int high = solver.findBestMove(board, Player.RED, 100);
+        assertTrue(low >= 0 && low < Bitboard.BOARD_WIDTH);
+        assertTrue(high >= 0 && high < Bitboard.BOARD_WIDTH);
     }
 }

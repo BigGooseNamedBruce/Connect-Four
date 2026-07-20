@@ -20,8 +20,8 @@ public class MoveSorter {
      */
     public MoveSorter() {
         this.size = 0;
-        this.moves = new long[BitBoard.BOARD_WIDTH];
-        this.scores = new int[BitBoard.BOARD_WIDTH];
+        this.moves = new long[Bitboard.BOARD_WIDTH];
+        this.scores = new int[Bitboard.BOARD_WIDTH];
     }
 
     /**

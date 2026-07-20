@@ -8,7 +8,7 @@ public class MoveRequest {
 
     // Getters and setters
     public Player getPlayer() {
-        if (player.equals("red")) {
+        if ("red".equals(player)) {
             return Player.RED;
         }
         return Player.YELLOW;

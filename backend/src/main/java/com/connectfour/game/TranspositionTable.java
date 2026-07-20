@@ -42,7 +42,9 @@ public class TranspositionTable {
 
     public byte get(long key) {
         int index = findIndex(key);
-        if (index == -1) return 0;
+        if (index == -1) {
+            return 0;
+        }
 
         moveToFront(index);
         return values[index];
@@ -93,7 +95,9 @@ public class TranspositionTable {
         int i = hash(key);
         while (true) {
             int idx = table[i];
-            if (idx == -1) return;
+            if (idx == -1) {
+                return;
+            }
 
             if (keys[idx] == key) {
                 table[i] = -1;
@@ -117,15 +121,21 @@ public class TranspositionTable {
         int i = hash(key);
         while (true) {
             int idx = table[i];
-            if (idx == -1) return -1;
-            if (keys[idx] == key) return idx;
+            if (idx == -1) {
+                return -1;
+            }
+            if (keys[idx] == key) {
+                return idx;
+            }
             i = (i + 1) & (tableSize - 1);
         }
     }
 
 
     private void moveToFront(int index) {
-        if (index == head) return;
+        if (index == head) {
+            return;
+        }
         removeFromList(index);
         insertAtFront(index);
     }
@@ -134,21 +144,31 @@ public class TranspositionTable {
         prev[index] = -1;
         next[index] = head;
 
-        if (head != -1) prev[head] = index;
+        if (head != -1) {
+            prev[head] = index;
+        }
         head = index;
 
-        if (tail == -1) tail = index;
+        if (tail == -1) {
+            tail = index;
+        }
     }
 
     private void removeFromList(int index) {
         int p = prev[index];
         int n = next[index];
 
-        if (p != -1) next[p] = n;
-        else head = n;
+        if (p != -1) {
+            next[p] = n;
+        } else {
+            head = n;
+        }
 
-        if (n != -1) prev[n] = p;
-        else tail = p;
+        if (n != -1) {
+            prev[n] = p;
+        } else {
+            tail = p;
+        }
 
         prev[index] = -1;
         next[index] = -1;
